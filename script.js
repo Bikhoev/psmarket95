@@ -402,8 +402,8 @@ document.addEventListener("DOMContentLoaded", () => {
     dealsGrid.innerHTML = `<div class="deal-meta">Загружаем скидки…</div>`;
 
     try {
-      const res = await fetch(
-        `http://localhost:3000/api/deals?region=${regionKey}&pages=5`
+      const res = await fetch(`https://psmarket95-deals.onrender.com/api/deals?region=${regionKey}&pages=5`);
+
       );
       const data = await res.json();
 
