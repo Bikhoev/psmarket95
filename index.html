@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>
+      PSMarket95 — игры и подписки для PlayStation по выгодным ценам
+    </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Описание для поисковиков -->
+    <meta
+      name="description"
+      content="PSMarket95 — магазин по продаже игр и подписок для PlayStation. Выгодные цены через турецкий и украинский регионы, удобный калькулятор стоимости и быстрая поддержка."
+    />
+
+    <!-- Цвет адресной строки на мобильных -->
+    <meta name="theme-color" content="#020617" />
+
+    <!-- Open Graph (превью при расшаривании в соцсетях) -->
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="PSMarket95 — игры и подписки для PlayStation по выгодным ценам"
+    />
+    <meta
+      property="og:description"
+      content="Рассчитай стоимость игры или подписки в рублях через турецкий или украинский аккаунт — быстро и понятно."
+    />
+    <!-- ЗАМЕНИ URL НА СВОЙ, КОГДА БУДЕТ ДОМЕН -->
+    <meta property="og:url" content="https://psmarket95.example" />
+    <!-- og:image лучше сделать отдельной картинкой 1200x630, пока временно можно использовать favicon или позже заменить -->
+    <meta
+      property="og:image"
+      content="https://psmarket95.example/psm-icon.svg"
+    />
+
+    <!-- Twitter-карточки (X) -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="PSMarket95 — выгодные игры и подписки для PlayStation"
+    />
+    <meta
+      name="twitter:description"
+      content="Узнай финальную цену в рублях через турецкий или украинский PS Store с помощью калькулятора PSMarket95."
+    />
+    <meta
+      name="twitter:image"
+      content="https://psmarket95.example/psm-icon.svg"
+    />
+
+    <!-- Фавиконы -->
+    <link rel="icon" type="image/svg+xml" href="psm-icon.svg" />
+    <!-- Резервный ICO (если когда-нибудь сделаешь .ico-файл) -->
+    <link rel="alternate icon" href="favicon.ico" />
+    <!-- Иконка для iOS (можно будет заменить на отдельный PNG 180x180) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="psm-icon.svg" />
+
+    <!-- Шрифт (если ещё не добавлял) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <header class="header">
+      <div class="container header-inner">
+        <a href="#" class="logo logo-link" aria-label="На главную">
+          <span class="logo-main">PS<span>Market</span>95</span>
+          <span class="logo-sub">Игры и подписки для PlayStation</span>
+        </a>
+
+        <!-- Кнопка-бургер для мобильной навигации -->
+        <button
+          class="burger"
+          id="burgerToggle"
+          aria-label="Открыть меню"
+          aria-expanded="false"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <nav class="nav">
+          <a href="#services">Услуги</a>
+          <a href="#deals">Скидки</a>
+          <a href="#about">О нас</a>
+          <a href="#calculator">Калькулятор</a>
+          <a href="#how-to-buy">Как заказать</a>
+          <a href="#contacts">Контакты</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero / Приветственный блок -->
+      <section class="hero">
+        <div class="container hero-inner">
+          <div class="hero-text">
+            <h1>
+              PSMarket95 — игры и подписки для PlayStation по выгодной цене
+            </h1>
+            <p>
+              Мы помогаем приобрести игры и подписки в PlayStation Store через
+              украинские и турецкие аккаунты. Используй калькулятор ниже, чтобы
+              самостоятельно рассчитать итоговую стоимость в рублях.
+            </p>
+            <a href="#calculator" class="btn-primary">Перейти к калькулятору</a>
+          </div>
+          <div class="hero-card">
+            <h2>Быстрый расчёт</h2>
+            <p>
+              Выбери регион, тип покупки и введи цену — получи стоимость в
+              рублях.
+            </p>
+            <ul>
+              <li>Турецкий аккаунт (TRY)</li>
+              <li>Украинский аккаунт (UAH)</li>
+              <li>Игры и подписки</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      <section id="deals" class="section section-alt">
+        <div class="container">
+          <h2 class="section-title">Скидки</h2>
+          <p class="section-subtitle">
+            Автоподборка из PlayStation Store. Выбери регион — цены сразу в
+            рублях.
+          </p>
+
+          <div class="deals-controls">
+            <button
+              class="subs-tab subs-tab--active"
+              id="dealsTabUA"
+              type="button"
+            >
+              Украина
+            </button>
+            <button class="subs-tab" id="dealsTabTR" type="button">
+              Турция
+            </button>
+          </div>
+
+          <div id="dealsGrid" class="deals-grid">
+            <!-- карточки подгрузятся JS -->
+          </div>
+
+          <p class="subs-note">
+            * Данные берутся из PS Store. Цена в рублях рассчитывается по
+            правилам PSMarket95.
+          </p>
+        </div>
+      </section>
+
+      <!-- Услуги -->
+      <section id="services" class="section">
+        <div class="container">
+          <h2 class="section-title">Наши услуги</h2>
+
+          <div class="cards-grid">
+            <div
+              class="card service-card"
+              data-action="games"
+              data-icon="game"
+              role="button"
+              tabindex="0"
+            >
+              <h3>Покупка игр</h3>
+              <p>Подбор региона, покупка и сопровождение.</p>
+            </div>
+
+            <div
+              class="card service-card"
+              data-action="subs"
+              data-icon="subs"
+              role="button"
+              tabindex="0"
+            >
+              <h3>Подписки PS Plus и EA Play</h3>
+              <p>Прайс по регионам, быстрые сроки оформления.</p>
+            </div>
+
+            <div
+              class="card service-card"
+              data-action="consult"
+              data-icon="chat"
+              role="button"
+              tabindex="0"
+            >
+              <h3>Консультация</h3>
+              <p>Поможем выбрать регион и вариант покупки.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- О нас -->
+      <section id="about" class="section section-alt">
+        <div class="container about-grid">
+          <div>
+            <h2 class="section-title">PSMarket95 — более 3 лет на рынке.</h2>
+            <p>
+              За это время мы помогли более чем 5000 клиентам приобрести игры и
+              подписки, а многие из них работают с нами на постоянной основе.
+            </p>
+            <p>
+              Мы не просто оформляем покупку — мы консультируем, подсказываем
+              оптимальный вариант и остаёмся на связи при любых вопросах или
+              неполадках. Наша цель — сделать процесс покупки понятным, быстрым
+              и безопасным для каждого клиента.
+            </p>
+          </div>
+          <div class="about-highlight">
+            <h3>Почему именно мы?</h3>
+            <ul>
+              <li>Чёткий и понятный процесс покупки</li>
+              <li>Индивидуальный подход к каждому клиенту</li>
+              <li>Помогаем выбрать оптимальный вариант покупки</li>
+              <li>
+                Всегда на связи и сопровождаем клиента до завершения заказа
+              </li>
+              <li>Более 3 лет опыта и тысячи успешных покупок</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Калькулятор -->
+      <section id="calculator" class="section">
+        <div class="container">
+          <h2 class="section-title">Калькулятор стоимости</h2>
+          <p class="section-subtitle">
+            Выбери регион аккаунта, тип покупки и введи цену в валюте магазина.
+            Мы покажем финальную сумму с наценкой PSMarket95.
+          </p>
+
+          <div class="calculator">
+            <form id="priceCalculator">
+              <div class="form-row">
+                <!-- ✅ ИСПРАВЛЕНО: id стоит на реальном form-group, без пустых div -->
+                <div class="form-group" id="gameRegionGroup">
+                  <label for="region">Регион аккаунта</label>
+                  <select id="region" required>
+                    <option value="ua">Украинский (UAH)</option>
+                    <option value="tr">Турецкий (TRY)</option>
+                  </select>
+                </div>
+
+                <!-- ✅ ИСПРАВЛЕНО: id стоит на реальном form-group, без пустых div -->
+                <div class="form-group" id="gameTypeGroup">
+                  <label for="productType">Тип покупки</label>
+                  <select id="productType" required>
+                    <option value="game">Игра</option>
+                    <option value="sub">Подписка</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="gameCalculatorFields">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="basePrice">Цена игры</label>
+                    <input
+                      id="basePrice"
+                      type="number"
+                      placeholder="Введите цену"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+                <button
+                  class="btn-primary full-width"
+                  type="button"
+                  id="orderBtn"
+                >
+                  Оформить заказ
+                </button>
+              </div>
+            </form>
+
+            <!-- Прайс подписок (показывается только когда выбран тип "Подписки") -->
+            <div class="subs-pricing hidden" id="subsPricing">
+              <div class="subs-head">
+                <div class="subs-head-top">
+                  <h3 class="subs-title">Прайс на подписки</h3>
+
+                  <!-- Тип покупки внутри блока подписок -->
+                  <div class="subs-type">
+                    <label class="subs-type-label" for="productTypeSubs"
+                      >Тип покупки</label
+                    >
+                    <select id="productTypeSubs">
+                      <option value="game">Игры</option>
+                      <option value="sub" selected>Подписки</option>
+                    </select>
+                  </div>
+                </div>
+
+                <p class="subs-subtitle">
+                  Выбери регион — цены фиксированные в рублях.
+                </p>
+              </div>
+
+              <div
+                class="subs-tabs"
+                role="tablist"
+                aria-label="Регион подписок"
+              >
+                <button
+                  class="subs-tab subs-tab--active"
+                  id="subsTabUA"
+                  type="button"
+                >
+                  Украина
+                </button>
+                <button class="subs-tab" id="subsTabTR" type="button">
+                  Турция
+                </button>
+              </div>
+
+              <!-- UA -->
+              <div class="subs-grid" id="subsUA">
+                <div class="subs-card">
+                  <div class="subs-card-top">
+                    <div class="subs-name">Основной</div>
+                    <div class="subs-badge">UA</div>
+                  </div>
+                  <div class="subs-lines">
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Основной"
+                      data-period="1 месяц"
+                      data-price="1190"
+                    >
+                      <span>1 месяц</span><strong>1190₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Основной"
+                      data-period="3 месяца"
+                      data-price="2190"
+                    >
+                      <span>3 месяца</span><strong>2190₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Основной"
+                      data-period="12 месяцев"
+                      data-price="4690"
+                    >
+                      <span>12 месяцев</span><strong>4690₽</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="subs-card">
+                  <div class="subs-card-top">
+                    <div class="subs-name">Экстра</div>
+                    <div class="subs-badge">UA</div>
+                  </div>
+                  <div class="subs-lines">
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Экстра"
+                      data-period="1 месяц"
+                      data-price="1590"
+                    >
+                      <span>1 месяц</span><strong>1590₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Экстра"
+                      data-period="3 месяца"
+                      data-price="3290"
+                    >
+                      <span>3 месяца</span><strong>3290₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Экстра"
+                      data-period="12 месяцев"
+                      data-price="6890"
+                    >
+                      <span>12 месяцев</span><strong>6890₽</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="subs-card">
+                  <div class="subs-card-top">
+                    <div class="subs-name">Люкс</div>
+                    <div class="subs-badge">UA</div>
+                  </div>
+                  <div class="subs-lines">
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Люкс"
+                      data-period="1 месяц"
+                      data-price="1690"
+                    >
+                      <span>1 месяц</span><strong>1690₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Люкс"
+                      data-period="3 месяца"
+                      data-price="3590"
+                    >
+                      <span>3 месяца</span><strong>3590₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="Люкс"
+                      data-period="12 месяцев"
+                      data-price="7890"
+                    >
+                      <span>12 месяцев</span><strong>7890₽</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="subs-card">
+                  <div class="subs-card-top">
+                    <div class="subs-name">EA Play (Спортивная)</div>
+                    <div class="subs-badge">UA</div>
+                  </div>
+                  <div class="subs-lines">
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="EA Play (Спортивная)"
+                      data-period="1 месяц"
+                      data-price="990"
+                    >
+                      <span>1 месяц</span><strong>990₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Украина"
+                      data-plan="EA Play (Спортивная)"
+                      data-period="12 месяцев"
+                      data-price="3300"
+                    >
+                      <span>12 месяцев</span><strong>3300₽</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- TR -->
+              <div class="subs-grid hidden" id="subsTR">
+                <div class="subs-card">
+                  <div class="subs-card-top">
+                    <div class="subs-name">Essential</div>
+                    <div class="subs-badge">TR</div>
+                  </div>
+                  <div class="subs-lines">
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Essential"
+                      data-period="1 месяц"
+                      data-price="1290"
+                    >
+                      <span>1 месяц</span><strong>1290₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Essential"
+                      data-period="3 месяца"
+                      data-price="2390"
+                    >
+                      <span>3 месяца</span><strong>2390₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Essential"
+                      data-period="12 месяцев"
+                      data-price="6190"
+                    >
+                      <span>12 месяцев</span><strong>6190₽</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="subs-card">
+                  <div class="subs-card-top">
+                    <div class="subs-name">Extra</div>
+                    <div class="subs-badge">TR</div>
+                  </div>
+                  <div class="subs-lines">
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Extra"
+                      data-period="1 месяц"
+                      data-price="1590"
+                    >
+                      <span>1 месяц</span><strong>1590₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Extra"
+                      data-period="3 месяца"
+                      data-price="3490"
+                    >
+                      <span>3 месяца</span><strong>3490₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Extra"
+                      data-period="12 месяцев"
+                      data-price="10290"
+                    >
+                      <span>12 месяцев</span><strong>10290₽</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="subs-card">
+                  <div class="subs-card-top">
+                    <div class="subs-name">Deluxe</div>
+                    <div class="subs-badge">TR</div>
+                  </div>
+                  <div class="subs-lines">
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Deluxe"
+                      data-period="1 месяц"
+                      data-price="1790"
+                    >
+                      <span>1 месяц</span><strong>1790₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Deluxe"
+                      data-period="3 месяца"
+                      data-price="4090"
+                    >
+                      <span>3 месяца</span><strong>4090₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="Deluxe"
+                      data-period="12 месяцев"
+                      data-price="11890"
+                    >
+                      <span>12 месяцев</span><strong>11890₽</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="subs-card">
+                  <div class="subs-card-top">
+                    <div class="subs-name">EA Play</div>
+                    <div class="subs-badge">TR</div>
+                  </div>
+                  <div class="subs-lines">
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="EA Play"
+                      data-period="1 месяц"
+                      data-price="990"
+                    >
+                      <span>1 месяц</span><strong>990₽</strong>
+                    </div>
+                    <div
+                      class="subs-line"
+                      role="button"
+                      tabindex="0"
+                      data-region="Турция"
+                      data-plan="EA Play"
+                      data-period="12 месяцев"
+                      data-price="4900"
+                    >
+                      <span>12 месяцев</span><strong>4900₽</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Выбранная подписка + кнопка оформления -->
+              <div class="subs-order hidden" id="subsOrder">
+                <div class="subs-picked" id="subsPickedText">
+                  Выберите подписку ниже
+                </div>
+                <button
+                  class="btn-primary full-width"
+                  type="button"
+                  id="subsOrderBtn"
+                >
+                  Оформить подписку
+                </button>
+              </div>
+
+              <p class="subs-note">
+                * Цены указаны в рублях. Наличие и сроки оформления уточняй в
+                поддержке.
+              </p>
+            </div>
+
+            <div id="resultCard" class="result-card hidden">
+              <h3>Результат расчёта</h3>
+              <p class="result-main">
+                Итоговая стоимость: <span id="finalPrice"></span>
+                <span id="finalCurrency"></span>
+              </p>
+              <div class="result-details">
+                <p>
+                  Базовая цена (в валюте магазина):
+                  <span id="resultBasePrice"></span>
+                  <span id="resultCurrency"></span>
+                </p>
+              </div>
+              <p class="result-note">
+                * Итоговая сумма ориентировочная. Точная цена может немного
+                отличаться из-за колебания курса и комиссий платёжных систем.
+              </p>
+            </div>
+
+            <div class="calculator-note">
+              <h3>Прочие услуги:</h3>
+              <ul>
+                <li>Создание аккаунта PS</li>
+                <li>Пополнение кошелька PS</li>
+                <li>Консультация по подпискам PS</li>
+              </ul>
+              <p>
+                Свяжитесь любым удобным способом и мы поможем Вам в вашем
+                вопросе!
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Как заказать -->
+      <section id="how-to-buy" class="section section-alt">
+        <div class="container">
+          <h2 class="section-title">Как сделать заказ</h2>
+          <ol class="steps">
+            <li>
+              Найди игру или подписку в PS Store и запиши цену в валюте региона.
+            </li>
+            <li>
+              Введи эту цену в калькулятор на сайте и посмотри итоговую сумму.
+            </li>
+            <li>
+              Свяжись с нами через контакты ниже и отправь скрин/название игры.
+            </li>
+            <li>
+              Оплачиваешь удобным способом — мы оформляем покупку на твой
+              аккаунт.
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Контакты -->
+      <section id="contacts" class="section">
+        <div class="container contacts-grid">
+          <div>
+            <h2 class="section-title">Контакты</h2>
+            <p>По всем вопросам и заказам — пиши нам в мессенджеры:</p>
+            <ul class="contacts-list">
+              <li>
+                Telegram:
+                <a
+                  href="https://t.me/bihoev"
+                  class="contact-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  @bihoev
+                </a>
+              </li>
+
+              <li>
+                WhatsApp:
+                <a
+                  href="https://wa.me/79639982998"
+                  class="contact-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  +7 (963) 998-29-98
+                </a>
+              </li>
+
+              <li>
+                Instagram:
+                <a
+                  href="https://www.instagram.com/playstationmarket95"
+                  class="contact-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  @playstationmarket95
+                </a>
+              </li>
+
+              <li>
+                Email:
+                <a href="mailto:psmarket95@outlook.com" class="contact-link">
+                  psmarket95@outlook.com
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="contacts-box">
+            <h3>Режим работы:</h3>
+            <p>Ежедневно: 10:00 – 23:30 (МСК)</p>
+            <p>Отвечаем обычно в течение 5–15 минут.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-inner">
+        <span
+          >© PSMarket95, 2025. Ваш магазин игр и подписок для PlayStation.</span
+        >
+        <span>Все товарные знаки принадлежат их владельцам.</span>
+      </div>
+    </footer>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
