@@ -111,7 +111,6 @@ function parseDealsGrid($) {
 
     const text = card.text().replace(/\s+/g, " ").trim();
 
-    // расширенный поиск валют (UAH/₴ и TRY/TL/₺)
     const priceMatch = text.match(
       /(UAH\s?[\d\s.,]+|₴\s?[\d\s.,]+|TRY\s?[\d\s.,]+|[\d\s.,]+\s?TL|₺\s?[\d\s.,]+)/i
     );
@@ -124,7 +123,6 @@ function parseDealsGrid($) {
     if (items.length >= 80) break;
   }
 
-  // если удалось хоть что-то — возвращаем
   if (items.length >= 10) {
     const seen = new Set();
     return items.filter((it) =>
@@ -132,7 +130,7 @@ function parseDealsGrid($) {
     );
   }
 
-  // 2) fallback: парсим из __NEXT_DATA__ (обычно именно там лежит список и цены)
+  // 2) fallback: __NEXT_DATA__
   const next = $("#__NEXT_DATA__").text();
   if (!next) return [];
 
@@ -239,17 +237,9 @@ async function getDeals(regionKey, pages = 5) {
       const html = await fetchHtml(pageUrl);
       const $ = cheerio.load(html);
       all.push(...parseDealsGrid($));
-      let firstHtml;
-      try {
-        firstHtml = await fetchHtml(dealsUrl);
-      } catch (e) {
-        // вторая попытка
-        firstHtml = await fetchHtml(dealsUrl);
-      }
     }
   }
 
-  // uniq
   const seen = new Set();
   const uniq = [];
   for (const it of all) {
@@ -260,7 +250,6 @@ async function getDeals(regionKey, pages = 5) {
 
   const trimmed = uniq.slice(0, 120);
 
-  // считаем RUB
   const mapped = trimmed
     .map((it) => {
       const base = normalizeNumber(it.priceStr);
@@ -284,7 +273,7 @@ async function getDeals(regionKey, pages = 5) {
   return mapped;
 }
 
-// ✅ CORS для Live Server (иначе fetch может блокироваться)
+// ✅ CORS для Live Server
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   next();
@@ -308,7 +297,6 @@ app.get("/api/deals", async (req, res) => {
   try {
     const items = await getDeals(region, pages);
 
-    // ✅ НЕ кешируем пустой результат (чтобы не "залипало" на items: [])
     if (items.length > 0) {
       cache.set(key, { ts: Date.now(), data: items });
     }

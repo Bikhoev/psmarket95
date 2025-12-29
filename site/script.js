@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (subsPickedText) subsPickedText.textContent = "Выберите подписку ниже";
   }
 
-  // ✅ ЗАМЕНЕНО НА ТВОЮ ВЕРСИЮ (С АВТОСКРОЛЛОМ ВНУТРИ)
+  // ✅ selectSubLine с автоскроллом внутрь
   function selectSubLine(el) {
     document
       .querySelectorAll(".subs-line.subs-line--active")
@@ -86,7 +86,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (subsOrder) subsOrder.classList.remove("hidden");
 
-    // ✅ автопрокрутка к кнопке оформления (после выбора)
     setTimeout(() => {
       const btn = document.getElementById("subsOrderBtn");
       if (btn) btn.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -106,10 +105,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const url =
       "https://wa.me/" + WHATSAPP_PHONE + "?text=" + encodeURIComponent(msg);
+
+    // чтобы в мобилке не оставляло пустую вкладку
     window.location.href = url;
   }
 
-  // клики по строкам прайса (делегирование)
   if (subsPricing) {
     subsPricing.addEventListener("click", (e) => {
       const line = e.target.closest(".subs-line");
@@ -142,10 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ====== ФУНКЦИИ ======
-  function updateInputCurrency() {
-    // валюта теперь определяется по региону, поле не нужно
-  }
+  function updateInputCurrency() {}
 
   function syncProductTypeSelects(value) {
     if (productTypeSelect.value !== value) {
@@ -191,22 +188,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const inputCurrency = settings.inputCurrency;
 
-    // 1) Курс по диапазонам
     const rate = getRate(regionKey, basePrice);
 
-    // 2) Цена в рублях
     let finalRub = basePrice * rate;
 
-    // 3) Минимальная цена игры
     if (finalRub < MIN_GAME_PRICE_RUB) {
       finalRub = MIN_GAME_PRICE_RUB;
     }
 
-    // 4) Округление
     const basePriceRounded = basePrice.toFixed(2);
     const finalRounded = finalRub.toFixed(2);
 
-    // 5) Вывод
     finalPriceSpan.textContent = finalRounded;
     finalCurrencySpan.textContent = OUTPUT_CURRENCY;
 
@@ -222,36 +214,28 @@ document.addEventListener("DOMContentLoaded", () => {
     syncProductTypeSelects(typeKey);
 
     if (typeKey === "sub") {
-      // скрываем верхние селекты
       gameRegionGroup?.classList.add("hidden");
       gameTypeGroup?.classList.add("hidden");
 
-      // скрываем калькулятор игр
       gameFields?.classList.add("hidden");
       resultCard.classList.add("hidden");
 
-      // показываем прайс
       subsPricing.classList.remove("hidden");
       showSubsRegion(regionSelect.value);
     } else {
-      // показываем верхние селекты
       gameRegionGroup?.classList.remove("hidden");
       gameTypeGroup?.classList.remove("hidden");
 
-      // скрываем прайс
       subsPricing.classList.add("hidden");
 
-      // возвращаем калькулятор
       gameFields?.classList.remove("hidden");
       calculateGame();
     }
   }
 
-  // ====== ИНИЦИАЛИЗАЦИЯ ======
   updateInputCurrency();
   updatePurchaseView();
 
-  // ====== СОБЫТИЯ: КАЛЬКУЛЯТОР ======
   basePriceInput.addEventListener("input", () => {
     if (productTypeSelect.value === "game") calculateGame();
   });
@@ -261,7 +245,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (productTypeSelect.value === "game") calculateGame({ showAlerts: true });
   });
 
-  // ====== КЛИК ПО КАРТОЧКАМ УСЛУГ ======
   const serviceCards = document.querySelectorAll(".service-card[data-action]");
 
   function scrollToCalculator() {
@@ -308,7 +291,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // ====== КНОПКА "ОФОРМИТЬ ЗАКАЗ" (ИГРЫ) ======
   if (orderBtn) {
     orderBtn.addEventListener("click", () => {
       const region = regionSelect.value === "ua" ? "Украина" : "Турция";
@@ -331,11 +313,11 @@ document.addEventListener("DOMContentLoaded", () => {
         WHATSAPP_PHONE +
         "?text=" +
         encodeURIComponent(message);
+
       window.location.href = url;
     });
   }
 
-  // ====== СОБЫТИЯ: ТИП ПОКУПКИ / РЕГИОН ======
   productTypeSelect.addEventListener("change", () => {
     syncProductTypeSelects(productTypeSelect.value);
     updatePurchaseView();
@@ -358,13 +340,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ====== СОБЫТИЯ: ВКЛАДКИ ПОДПИСОК ======
   if (subsTabUA && subsTabTR) {
     subsTabUA.addEventListener("click", () => showSubsRegion("ua"));
     subsTabTR.addEventListener("click", () => showSubsRegion("tr"));
   }
 
-  // ====== АНИМАЦИИ СЕКЦИЙ (visible + active) ======
   const sections = document.querySelectorAll(
     "section.section, section.section-alt"
   );
@@ -386,6 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     sections.forEach((section) => observer.observe(section));
   }
+
   // ====== DEALS (Скидки) ======
   const dealsGrid = document.getElementById("dealsGrid");
   const dealsTabUA = document.getElementById("dealsTabUA");
@@ -402,9 +383,11 @@ document.addEventListener("DOMContentLoaded", () => {
     dealsGrid.innerHTML = `<div class="deal-meta">Загружаем скидки…</div>`;
 
     try {
-      const res = await fetch(`https://psmarket95-deals.onrender.com/api/deals?region=${regionKey}&pages=5`);
-
+      // ✅ ЛОКАЛЬНО: берём с твоего сервера
+      const res = await fetch(
+        `http://localhost:3000/api/deals?region=${regionKey}&pages=5`
       );
+
       const data = await res.json();
 
       if (!data.items || !Array.isArray(data.items)) {
@@ -463,7 +446,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // старт по умолчанию
   if (dealsGrid) {
     setDealsTabs("ua");
     loadDeals("ua");
@@ -472,6 +454,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // ====== БУРГЕР-МЕНЮ ======
   const burger = document.getElementById("burgerToggle");
   const nav = document.querySelector(".nav");
+
+  function closeMenu() {
+    nav.classList.remove("nav--open");
+    burger.classList.remove("burger--open");
+    document.body.classList.remove("menu-open");
+    burger.setAttribute("aria-expanded", "false");
+  }
 
   if (burger && nav) {
     burger.addEventListener("click", () => {
@@ -482,34 +471,24 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     nav.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", () => {
-        nav.classList.remove("nav--open");
-        burger.classList.remove("burger--open");
-        document.body.classList.remove("menu-open");
-        burger.setAttribute("aria-expanded", "false");
-      });
+      link.addEventListener("click", () => closeMenu());
     });
+
+    // ✅ ЗАКРЫТИЕ БУРГЕРА ПО КЛИКУ ВНЕ МЕНЮ (capture)
+    document.addEventListener(
+      "click",
+      (e) => {
+        const isMenuOpen = nav.classList.contains("nav--open");
+        if (!isMenuOpen) return;
+
+        const clickedInsideBurger = burger.contains(e.target);
+        const clickedInsideNav = nav.contains(e.target);
+
+        if (!clickedInsideBurger && !clickedInsideNav) {
+          closeMenu();
+        }
+      },
+      true
+    );
   }
 });
-// ====== ЗАКРЫТИЕ БУРГЕРА ПО КЛИКУ ВНЕ МЕНЮ (capture) ======
-document.addEventListener(
-  "click",
-  (e) => {
-    if (!burger || !nav) return;
-
-    const isMenuOpen = nav.classList.contains("nav--open");
-    if (!isMenuOpen) return;
-
-    const clickedInsideBurger = burger.contains(e.target);
-    const clickedInsideNav = nav.contains(e.target);
-
-    // если клик НЕ по бургеру и НЕ внутри меню — закрываем
-    if (!clickedInsideBurger && !clickedInsideNav) {
-      nav.classList.remove("nav--open");
-      burger.classList.remove("burger--open");
-      document.body.classList.remove("menu-open");
-      burger.setAttribute("aria-expanded", "false");
-    }
-  },
-  true // ← ВОТ ЭТО КЛЮЧЕВО
-);
