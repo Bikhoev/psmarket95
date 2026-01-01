@@ -531,6 +531,14 @@ ${lines.join("\n\n")}
 
     sections.forEach((section) => observer.observe(section));
   }
+  // FIX mobile: если IntersectionObserver не сработал сразу — покажем секции принудительно через секунду
+  setTimeout(() => {
+    document
+      .querySelectorAll("section.section, section.section-alt")
+      .forEach((s) => {
+        s.classList.add("section-visible");
+      });
+  }, 1000);
 
   // ====== DEALS (Скидки) ======
   const dealsGrid = document.getElementById("dealsGrid");
@@ -543,35 +551,6 @@ ${lines.join("\n\n")}
   let dealsSort = "popular"; // popular | discount
   let dealsOffset = 0;
   const DEALS_LIMIT = 24;
-
-  // ❌ У тебя тут было addToCart/updateCartUI (которых нет)
-  // ✅ оставляем только твою рабочую корзину: cartAdd + renderCart
-  dealsGrid.addEventListener("click", (e) => {
-    const btn = e.target.closest('[data-action="add-to-cart"]');
-    if (!btn) return;
-
-    const item = {
-      title: btn.dataset.title,
-      img: btn.dataset.img,
-      url: btn.dataset.url,
-      rubPrice: Number(btn.dataset.rub || btn.dataset.price || 0),
-      region: btn.dataset.region,
-    };
-
-    function flashAdded(btn) {
-      const old = btn.textContent;
-      btn.textContent = "Добавлено ✓";
-      btn.disabled = true;
-      setTimeout(() => {
-        btn.textContent = old;
-        btn.disabled = false;
-      }, 700);
-    }
-
-    cartAdd(item);
-    renderCart();
-    flashAdded(btn);
-  });
 
   // ====== MODAL HANDLERS ======
   const dealModal = document.getElementById("dealModal");
@@ -734,6 +713,8 @@ ${lines.join("\n\n")}
 
     const res = await fetch(apiUrl);
     const data = await res.json();
+    console.log("DEALS LOADED:", data.items?.length, "total:", data.total);
+
     if (!data.items) throw new Error(data.error || "Не удалось загрузить.");
 
     if (reset) dealsGrid.innerHTML = "";
@@ -852,12 +833,39 @@ ${lines.join("\n\n")}
   }
 
   // старт
-  if (dealsGrid) {
+  async function safeFetchDealsFirstTime() {
+    if (!dealsGrid) return;
+
     setDealsTabs("ua");
     if (dealsSortSelect) dealsSortSelect.value = "popular";
-    fetchDealsPage({ reset: true }).catch((e) => {
-      dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
-    });
+
+    // на мобиле иногда нужно дождаться реального layout
+    await new Promise((r) =>
+      requestAnimationFrame(() => requestAnimationFrame(r))
+    );
+
+    const attempts = 3;
+    let lastErr = null;
+
+    for (let i = 0; i < attempts; i++) {
+      try {
+        await fetchDealsPage({ reset: true });
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    }
+
+    if (lastErr) {
+      dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${lastErr.message}</div>`;
+    }
+  }
+
+  // старт
+  if (dealsGrid) {
+    safeFetchDealsFirstTime();
   }
 
   // ====== БУРГЕР-МЕНЮ ======

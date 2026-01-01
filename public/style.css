@@ -2007,3 +2007,8 @@ section[id] {
     filter: none !important;
   }
 }
+/* На всякий: скидки не должны оставаться "невидимыми" */
+#dealsGrid,
+.deal-card {
+  opacity: 1;
+}
