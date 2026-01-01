@@ -134,22 +134,41 @@
             Автоподборка из PlayStation Store. Выбери регион — цены сразу в
             рублях.
           </p>
+          <div class="deals-head">
+            <div class="subs-tabs" role="tablist" aria-label="Регион скидок">
+              <button
+                class="subs-tab subs-tab--active"
+                id="dealsTabUA"
+                type="button"
+              >
+                Украина
+              </button>
+              <button class="subs-tab" id="dealsTabTR" type="button">
+                Турция
+              </button>
+            </div>
 
-          <div class="deals-controls">
-            <button
-              class="subs-tab subs-tab--active"
-              id="dealsTabUA"
-              type="button"
-            >
-              Украина
-            </button>
-            <button class="subs-tab" id="dealsTabTR" type="button">
-              Турция
-            </button>
-          </div>
+<div class="deals-sort">
+  <label class="subs-type-label" for="dealsSort">Сортировка</label>
+  <select id="dealsSort" class="subs-type">
+    <option value="popular">По популярности</option>
+    <option value="discount">По скидке</option>
+  </select>
 
-          <div id="dealsGrid" class="deals-grid">
-            <!-- карточки подгрузятся JS -->
+  <button class="cart-icon-btn" id="cartOpenBtn" type="button" aria-label="Открыть корзину">
+    <span class="cart-ico" aria-hidden="true">🛒</span>
+    <span class="cart-badge" id="cartCount">0</span>
+  </button>
+</div>
+
+
+          <div id="dealsGrid" class="deals-grid"></div>
+
+          <!-- ✅ КНОПКА ТЕПЕРЬ ВНИЗУ -->
+          <div class="deals-footer">
+            <button id="dealsMore" class="btn-primary" type="button">
+              Показать ещё
+            </button>
           </div>
 
           <p class="subs-note">
@@ -792,5 +811,86 @@
     </footer>
 
     <script src="script.js" defer></script>
+    <!-- ====== MODAL: детали скидки ====== -->
+    <div class="modal hidden" id="dealModal" aria-hidden="true">
+      <div class="modal-overlay" id="dealModalOverlay"></div>
+
+      <div
+        class="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dealModalTitle"
+      >
+        <button class="modal-close" id="dealModalClose" aria-label="Закрыть">
+          ✕
+        </button>
+
+        <div class="modal-head">
+          <img class="modal-cover" id="dealModalImg" alt="" />
+          <div class="modal-head-info">
+            <div class="modal-title" id="dealModalTitle">Загрузка…</div>
+            <div class="modal-price" id="dealModalPrice"></div>
+            <a
+              class="modal-buy"
+              id="dealModalBuy"
+              href="#"
+              target="_blank"
+              rel="noopener"
+              >Купить</a
+            >
+          </div>
+        </div>
+
+        <div class="modal-cards">
+          <div class="info-card">
+            <div class="info-row">
+              <span>Скидка действует до</span
+              ><strong id="dealModalUntil">—</strong>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <div class="info-row">
+              <span>Платформа</span><strong id="dealModalPlatform">—</strong>
+            </div>
+            <div class="info-row">
+              <span>Русский язык</span><strong id="dealModalRu">—</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cart-modal hidden" id="cartModal" aria-hidden="true">
+      <div class="cart-overlay" id="cartOverlay"></div>
+
+      <div
+        class="cart-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Корзина"
+      >
+        <div class="cart-head">
+          <div class="cart-title">Корзина</div>
+          <button class="cart-close" id="cartCloseBtn" type="button">✕</button>
+        </div>
+
+        <div class="cart-body">
+          <div id="cartList" class="cart-list"></div>
+          <div id="cartEmpty" class="cart-empty">Корзина пустая</div>
+        </div>
+
+        <div class="cart-foot">
+          <div class="cart-total">
+            Итого: <strong><span id="cartTotal">0</span> ₽</strong>
+          </div>
+          <button class="btn-primary" id="cartWhatsappBtn" type="button">
+            Оформить в WhatsApp
+          </button>
+          <button class="btn-secondary" id="cartClearBtn" type="button">
+            Очистить
+          </button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

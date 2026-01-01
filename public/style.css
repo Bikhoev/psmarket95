@@ -1398,97 +1398,368 @@ section[id] {
     --header-offset: 92px;
   }
 }
-.deals-controls {
-  display: flex;
-  gap: 10px;
-  margin: 14px 0 18px;
-  flex-wrap: wrap;
+/* чтобы клик по кнопке НЕ открывал модалку — обработаем в JS */
+/* ===== MODAL ===== */
+.modal.hidden {
+  display: none;
 }
 
-.deals-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
 }
 
-.deal-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 16px;
-  overflow: hidden;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(6px);
 }
 
-.deal-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(148, 163, 184, 0.28);
+.modal-panel {
+  position: relative;
+  margin: 4vh auto;
+  width: min(720px, 92vw);
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
 }
 
-.deal-img {
-  width: 100%;
-  aspect-ratio: 16/9;
-  object-fit: cover;
-  display: block;
-}
-
-.deal-body {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.deal-title {
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1.25;
-}
-
-.deal-prices {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.deal-rub {
-  font-weight: 700;
-  font-size: 16px;
-}
-
-.deal-meta {
-  opacity: 0.75;
-  font-size: 12px;
-}
-
-.deal-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 2px;
-}
-
-.deal-buy {
-  width: 100%;
-  text-align: center;
-  padding: 10px 12px;
+.modal-close {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  width: 36px;
+  height: 36px;
   border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
   cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease;
-  text-decoration: none;
-  display: block;
 }
 
-.deal-buy:hover {
+.modal-head {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.modal-cover {
+  width: 160px;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.modal-price {
+  margin-top: 6px;
+  font-size: 16px;
+  opacity: 0.9;
+  font-weight: 700;
+}
+
+.modal-buy {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.modal-cards {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.info-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 16px;
+  padding: 12px 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+.info-row:last-child {
+  border-bottom: none;
+}
+.info-row span {
+  opacity: 0.7;
+}
+.info-row strong {
+  font-weight: 800;
+  text-align: right;
+}
+
+@media (max-width: 560px) {
+  .modal-head {
+    grid-template-columns: 120px 1fr;
+  }
+  .modal-cover {
+    width: 120px;
+  }
+}
+#dealModalRelease {
+  display: none;
+}
+.deals-head {
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.deals-sort {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.deals-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+.cart-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.cart-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.09);
+}
+.deals-sort {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Новая компактная корзина справа */
+.cart-icon-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.cart-icon-btn:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.09);
 }
 
-@media (max-width: 1100px) {
+.cart-ico {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* бейдж поверх кнопки */
+.cart-icon-btn .cart-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  font-size: 12px;
+  background: rgba(40, 120, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.cart-badge {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.cart-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+.cart-modal.hidden {
+  display: none;
+}
+
+.cart-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.cart-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: min(420px, 92vw);
+  background: #0b1220;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.cart-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+}
+.cart-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+}
+
+.cart-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 2px;
+}
+.cart-empty {
+  opacity: 0.7;
+  padding: 16px 0;
+}
+
+.cart-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cart-item {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+.cart-item img {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+.cart-item-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #fff;
+  line-height: 1.2;
+}
+.cart-item-meta {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+.cart-item-price {
+  font-weight: 700;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.cart-remove {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.cart-foot {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.btn-secondary {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+}
+.cart-icon-btn .cart-badge:empty {
+  display: none;
+}
+
+/* ===== DEALS: один финальный стиль (без дублей) ===== */
+
+.deals-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1200px) {
   .deals-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 @media (max-width: 800px) {
@@ -1496,8 +1767,217 @@ section[id] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (max-width: 420px) {
-  .deals-grid {
-    grid-template-columns: 1fr;
-  }
+
+.deal-card {
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+}
+
+.deal-media {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.deal-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.deal-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(40, 120, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.deal-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.deal-title {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 34px;
+  opacity: 0.95;
+}
+
+.deal-priceRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deal-rub {
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.2px;
+  color: #fff;
+}
+
+.deal-ps {
+  font-size: 12px;
+  opacity: 0.75;
+  color: #fff;
+}
+
+/* ✅ вот тут лечим “кривые кнопки” */
+.deal-actions:has(.deal-btn:only-child) {
+  grid-template-columns: 1fr;
+}
+
+/* общий стиль для КНОПКИ и ССЫЛКИ */
+.deal-btn {
+  height: 44px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.12s ease, background 0.12s ease,
+    border-color 0.12s ease;
+
+  /* ✅ reset чтобы button не был “кривой” по умолчанию */
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  line-height: 1;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+/* В корзину */
+.deal-cart {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.deal-cart:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+/* Купить */
+.deal-buy {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.deal-buy:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ✅ страховка: чтобы <a> выглядел как кнопка */
+.deal-buy:visited {
+  color: #fff;
+}
+/* ===== DEALS polish: cursor + badge + price (put at END of style.css) ===== */
+
+/* карточка кликабельная */
+.deal-card {
+  cursor: pointer;
+}
+
+/* чтобы при наведении было "живее" */
+.deal-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(148, 163, 184, 0.32);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+/* чуть мягче тень при наведении */
+.deal-card:hover .deal-media {
+  filter: brightness(1.03) contrast(1.02);
+}
+
+/* ПЛАШКА СКИДКИ */
+.deal-badge {
+  left: 12px;
+  bottom: 12px;
+
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+
+  border-radius: 999px;
+  color: #ffffff;
+
+  /* стеклянный градиент */
+  background: linear-gradient(
+    135deg,
+    rgba(100, 10, 235, 0.92),
+    rgba(16, 78, 177, 0.92),
+    rgba(99, 102, 241, 0.92)
+  );
+
+  border: 1px solid rgba(255, 255, 255, 0.22);
+
+  /* мягкое свечение */
+  box-shadow: 0 10px 26px rgba(59, 130, 246, 0.25),
+    0 2px 10px rgba(0, 0, 0, 0.35);
+
+  backdrop-filter: blur(6px);
+}
+
+/* маленький "%" как аккуратная деталь */
+.deal-badge::after {
+  content: "%";
+  opacity: 0.75;
+  margin-left: 2px;
+  font-weight: 800;
+}
+
+/* ЦЕНА */
+.deal-rub {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  line-height: 1.05;
+}
+
+/* знак рубля чуть меньше */
+.deal-rub::after {
+  content: "";
+}
+
+/* если у тебя рубль выводится как "3490 ₽" текстом — можно слегка стилизовать ₽ через span,
+   но без правки HTML сделаем общий акцент на строку цены */
+.deal-priceRow {
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+/* мелкая строка (psOffer) чуть аккуратнее */
+.deal-ps {
+  opacity: 0.78;
 }
