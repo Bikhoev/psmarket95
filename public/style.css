@@ -1981,3 +1981,29 @@ section[id] {
 .deal-ps {
   opacity: 0.78;
 }
+/* FIX mobile: фон/градиенты не должны перекрывать контент скидок */
+#dealsGrid,
+.deal-card,
+.deals-controls,
+.deals-header {
+  position: relative;
+  z-index: 2;
+}
+
+/* Если у секции/блока скидок есть псевдо-элементы фона — уводим их назад */
+#dealsSection::before,
+#dealsSection::after,
+.deals::before,
+.deals::after,
+.section::before,
+.section::after {
+  z-index: 0;
+}
+@media (max-width: 900px) {
+  .deal-card,
+  #dealsGrid {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
