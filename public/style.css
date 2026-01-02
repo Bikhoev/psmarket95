@@ -2084,3 +2084,48 @@ section[id] {
 body {
   padding-bottom: 90px;
 }
+/* затемнение/оверлей пусть остается как есть */
+
+/* ВАЖНО: это контейнер самой корзины внутри модалки */
+.cart-modal-content {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-height: 75vh;
+  overflow: auto;
+
+  border-radius: 16px;
+}
+
+/* На десктопе можно оставить как было */
+@media (min-width: 900px) {
+  .cart-modal-content {
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 520px;
+    max-height: 80vh;
+  }
+}
+/* ===== Mobile cart: bottom-sheet стиль ===== */
+@media (max-width: 720px) {
+  .cart-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+
+    max-height: 72vh; /* высота меньше экрана */
+    overflow: hidden; /* чтобы футер не вылезал */
+
+    border-radius: 16px;
+  }
+
+  .cart-body {
+    overflow: auto; /* скролл внутри списка */
+    max-height: calc(72vh - 140px); /* подстройка под head+foot */
+  }
+}

@@ -146,6 +146,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function openCart() {
     if (!cartModal) return;
+
+    // ✅ прячем мини-панель, чтобы не перекрывала корзину
+    hideMiniCartBar();
+
     cartModal.classList.remove("hidden");
     cartModal.setAttribute("aria-hidden", "false");
     renderCart();
@@ -153,8 +157,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeCart() {
     if (!cartModal) return;
+
     cartModal.classList.add("hidden");
     cartModal.setAttribute("aria-hidden", "true");
+
+    // ✅ возвращаем мини-панель (если в корзине есть товары)
+    showMiniCartBarIfNeeded();
   }
 
   // ====== MINI CART BAR (нижняя панель) ======
@@ -205,9 +213,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateMiniCartBar() {
     if (!miniCartBar) return;
 
-    if (!cart.length) {
+    // ✅ если корзина открыта — мини-панель не показываем вообще
+    if (cartModal && !cartModal.classList.contains("hidden")) {
       miniCartBar.classList.add("hidden");
       return;
+      function hideMiniCartBar() {
+        if (!miniCartBar) return;
+        miniCartBar.classList.add("hidden");
+      }
+
+      function showMiniCartBarIfNeeded() {
+        updateMiniCartBar(); // сама решит показывать или нет
+      }
     }
 
     const sum = calcCartSum();
@@ -216,6 +233,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (miniCartSumEl) miniCartSumEl.textContent = String(sum);
 
     miniCartBar.classList.remove("hidden");
+  }
+  function hideMiniCartBar() {
+    if (!miniCartBar) return;
+    miniCartBar.classList.add("hidden");
+  }
+
+  function showMiniCartBarIfNeeded() {
+    // показываем только если есть товары (updateMiniCartBar сам решит)
+    updateMiniCartBar();
   }
 
   // ✅ ДОБАВЛЕНИЕ В КОРЗИНУ БЕЗ АВТООТКРЫТИЯ
