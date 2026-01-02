@@ -462,6 +462,266 @@ function normalizeStoreUrlByRegion(url, region) {
   return url;
 }
 
+// === HELPERS: нормализация языка ===
+function normLangToken(x) {
+  const s = String(x || "")
+    .toLowerCase()
+    .trim();
+  if (!s) return "";
+  // ru, ru-ru, russian, русский
+  if (s === "ru" || s.startsWith("ru-")) return "ru";
+  if (s.includes("russian")) return "ru";
+  if (s.includes("рус")) return "ru";
+  return s;
+}
+
+function isRu(x) {
+  return normLangToken(x) === "ru";
+}
+
+// вытаскиваем из массива/объекта все "языковые" токены
+function collectLangTokens(value, out = []) {
+  if (!value) return out;
+
+  if (typeof value === "string") {
+    out.push(value);
+    return out;
+  }
+
+  if (Array.isArray(value)) {
+    for (const v of value) collectLangTokens(v, out);
+    return out;
+  }
+
+  if (typeof value === "object") {
+    // Частые варианты ключей
+    const keys = [
+      "code",
+      "locale",
+      "languageCode",
+      "id",
+      "name",
+      "displayName",
+      "label",
+      "value",
+    ];
+    for (const k of keys) {
+      if (value[k]) collectLangTokens(value[k], out);
+    }
+    return out;
+  }
+
+  return out;
+}
+
+// === GENERIC: пройтись по объекту и собрать кандидаты по ключам ===
+function deepCollectByKeyHints(obj, hints, out = []) {
+  if (!obj) return out;
+
+  if (Array.isArray(obj)) {
+    for (const x of obj) deepCollectByKeyHints(x, hints, out);
+    return out;
+  }
+
+  if (typeof obj === "object") {
+    for (const [k, v] of Object.entries(obj)) {
+      const key = String(k).toLowerCase();
+
+      // Если ключ похож на нужный — добавим значение как кандидат
+      if (hints.some((h) => key.includes(h))) {
+        out.push({ key, value: v });
+      }
+
+      deepCollectByKeyHints(v, hints, out);
+    }
+  }
+
+  return out;
+}
+
+// === ПЛАТФОРМЫ: достаём из nextData структурно ===
+function extractPlatformFromNextData(nextData) {
+  if (!nextData) return null;
+
+  // ключи, где обычно лежат платформы
+  const candidates = deepCollectByKeyHints(nextData, [
+    "platform",
+    "platforms",
+    "playableplatform",
+    "device",
+    "devices",
+    "console",
+  ]);
+
+  const found = new Set();
+
+  // собираем строковые токены и ищем PS4/PS5
+  for (const c of candidates) {
+    const tokens = collectLangTokens(c.value, []);
+    for (const t of tokens) {
+      const s = String(t).toUpperCase();
+      if (s.includes("PS5")) found.add("PS5");
+      if (s.includes("PS4")) found.add("PS4");
+    }
+  }
+
+  // если не нашли — пробуем мягкий поиск по строкам nextData (но не по body)
+  if (found.size === 0) {
+    const rows = deepFindAllStrings(nextData);
+    for (const r of rows) {
+      const s = String(r).toUpperCase();
+      if (s.includes("PS5")) found.add("PS5");
+      if (s.includes("PS4")) found.add("PS4");
+    }
+  }
+
+  if (found.size === 0) return null;
+  return Array.from(found).sort().join(", "); // PS4, PS5
+}
+
+// === ЯЗЫКИ: отдельный поиск audio и subtitles ===
+function extractRuSupportAccurate(nextData) {
+  if (!nextData) return null;
+
+  // IMPORTANT: тут мы не ищем "voice" как слово где-то рядом,
+  // а ищем реальные поля аудио/субтитров.
+  const audioCandidates = deepCollectByKeyHints(nextData, [
+    "audiolanguage",
+    "voice",
+    "spokenlanguage",
+    "dub",
+    "audio",
+  ]);
+
+  const subCandidates = deepCollectByKeyHints(nextData, [
+    "subtitle",
+    "subtitles",
+    "textlanguage",
+    "uilanguage",
+    "screenlanguage",
+    "menu",
+  ]);
+
+  // Собираем множества языков
+  const audioLangs = new Set();
+  const subLangs = new Set();
+
+  for (const c of audioCandidates) {
+    const tokens = collectLangTokens(c.value, []);
+    for (const t of tokens) audioLangs.add(normLangToken(t));
+  }
+
+  for (const c of subCandidates) {
+    const tokens = collectLangTokens(c.value, []);
+    for (const t of tokens) subLangs.add(normLangToken(t));
+  }
+
+  const hasRuAudio = audioLangs.has("ru");
+  const hasRuSubs = subLangs.has("ru");
+
+  if (hasRuAudio && hasRuSubs) return "Озвучка и субтитры";
+  if (hasRuAudio) return "Озвучка";
+  if (hasRuSubs) return "Русские субтитры";
+
+  // если вообще ничего не нашли (а не "нет русского")
+  const nothingFound = audioLangs.size === 0 && subLangs.size === 0;
+  if (nothingFound) return null;
+
+  return "Нет данных";
+}
+
+// ======================================================================
+// ✅ НОВОЕ: Точный парсинг из инфо-блока (Platform / Voice / Screen Languages)
+// (не ищем по всему body "PS4/PS5/ru", а берём значения только из секции)
+// ======================================================================
+
+function normalizeSpaces(s) {
+  return (s || "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizePlatformStr(raw) {
+  const s = (raw || "").toUpperCase();
+  const hasPS5 = s.includes("PS5");
+  const hasPS4 = s.includes("PS4");
+  if (hasPS4 && hasPS5) return "PS4, PS5";
+  if (hasPS5) return "PS5";
+  if (hasPS4) return "PS4";
+  return null;
+}
+
+// ✅ Достаём "Platform: ... Release:" (и локализованные варианты)
+function extractPlatformFromInfoBlock($) {
+  const t = normalizeSpaces($("body").text());
+
+  const patterns = [
+    /Platform:\s*([^]*?)\s*Release:/i,
+    /Платформа:\s*([^]*?)\s*(?:Дата выпуска|Выпуск|Релиз):/i,
+    /Платформа:\s*([^]*?)\s*Выпуск:/i,
+  ];
+
+  for (const re of patterns) {
+    const m = t.match(re);
+    if (m && m[1]) {
+      const p = normalizePlatformStr(m[1]);
+      if (p) return p;
+    }
+  }
+  return null;
+}
+
+// ✅ Достаём списки Voice и Screen Languages (и локализованные)
+function extractRuSupportFromInfoBlock($) {
+  const t = normalizeSpaces($("body").text());
+
+  const variants = [
+    {
+      voice: /Voice:\s*([^]*?)\s*Screen Languages:/i,
+      screen:
+        /Screen Languages:\s*([^]*?)\s*(?:Download of this product|Platform:|Release:|Publisher:|Genres:|$)/i,
+    },
+    {
+      voice: /Озвучивание:\s*([^]*?)\s*Языки экрана:/i,
+      screen:
+        /Языки экрана:\s*([^]*?)\s*(?:Загрузка этого продукта|Платформа:|Дата выпуска|Издатель|Жанры|$)/i,
+    },
+    {
+      voice: /Озвучка:\s*([^]*?)\s*Языки экрана:/i,
+      screen:
+        /Языки экрана:\s*([^]*?)\s*(?:Загрузка этого продукта|Платформа:|Дата выпуска|Издатель|Жанры|$)/i,
+    },
+  ];
+
+  let voiceList = "";
+  let screenList = "";
+
+  for (const v of variants) {
+    const mv = t.match(v.voice);
+    const ms = t.match(v.screen);
+    if (mv?.[1] || ms?.[1]) {
+      voiceList = normalizeSpaces(mv?.[1] || "");
+      screenList = normalizeSpaces(ms?.[1] || "");
+      break;
+    }
+  }
+
+  // Если вообще не нашли блок — вернём null (пусть дальше решают nextData/fallback)
+  if (!voiceList && !screenList) return null;
+
+  const hasRu = (s) =>
+    /\bRussian\b/i.test(s) || /русск/i.test(s) || /російськ/i.test(s);
+
+  const voiceRu = hasRu(voiceList);
+  const screenRu = hasRu(screenList);
+
+  if (voiceRu && screenRu) return "Озвучка и субтитры";
+  if (voiceRu) return "Озвучка";
+  if (screenRu) return "Русские субтитры";
+  return "Нет русского";
+}
+
 app.get("/api/game-details", async (req, res) => {
   const region = (req.query.region || "ua").toString();
   let url = (req.query.url || "").toString();
@@ -486,15 +746,48 @@ app.get("/api/game-details", async (req, res) => {
 
     const nextData = extractNextData($);
 
-    // Платформа
-    const platformText = $("body").text();
-    const hasPS5 = /PS5/i.test(platformText);
-    const hasPS4 = /PS4/i.test(platformText);
-    const platform =
-      hasPS4 && hasPS5 ? "PS4, PS5" : hasPS5 ? "PS5" : hasPS4 ? "PS4" : "—";
+    // ==================================================================
+    // ✅ ПЛАТФОРМА:
+    // 1) СНАЧАЛА пробуем точный инфо-блок (не ловит PS4 из меню/футера)
+    // 2) Потом nextData
+    // 3) Потом самый последний простой fallback по "Platform:" (не по всему body)
+    // ==================================================================
+    let platform = extractPlatformFromInfoBlock($);
+
+    if (!platform) {
+      const platformFromNext = extractPlatformFromNextData(nextData);
+      if (platformFromNext) platform = platformFromNext;
+    }
+
+    if (!platform) {
+      const txt = $("body").text();
+      const hasPS5 = /Platform:\s*PS5/i.test(txt);
+      const hasPS4 = /Platform:\s*PS4/i.test(txt);
+      platform =
+        hasPS4 && hasPS5 ? "PS4, PS5" : hasPS5 ? "PS5" : hasPS4 ? "PS4" : "—";
+    }
+
+    // ==================================================================
+    // ✅ РУССКИЙ:
+    // 1) СНАЧАЛА точный инфо-блок Voice/Screen Languages
+    // 2) Если блок не найден — пробуем nextData (твой accurate)
+    // 3) Если и это не помогло — старый fallback
+    // ==================================================================
+    let ruSupport = extractRuSupportFromInfoBlock($);
+
+    if (!ruSupport) {
+      const ruAccurate = extractRuSupportAccurate(nextData);
+      // если accurate вернул осмысленный результат — берём его
+      if (ruAccurate && ruAccurate !== "Нет данных") {
+        ruSupport = ruAccurate;
+      }
+    }
+
+    if (!ruSupport) {
+      ruSupport = detectRuSupport($);
+    }
 
     const discountUntil = extractDiscountUntilFromNextData(nextData) || "—";
-    const ruSupport = detectRuFromNextData(nextData) || detectRuSupport($);
 
     const data = { platform, discountUntil, ruSupport };
     detailsCache.set(url, { ts: Date.now(), data });

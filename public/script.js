@@ -84,6 +84,36 @@ document.addEventListener("DOMContentLoaded", () => {
             ${makeHiResImg(url, 1080)} 1080w`;
   }
 
+  // ====== TOAST (уведомления) ======
+  function showToast(
+    message = "Игра добавлена в корзину",
+    type = "success",
+    ms = 1800
+  ) {
+    let el = document.getElementById("toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "toast";
+      el.className = "toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      document.body.appendChild(el);
+    }
+
+    el.textContent = message;
+
+    el.classList.remove("toast--success", "toast--error");
+    el.classList.add(type === "error" ? "toast--error" : "toast--success");
+
+    // перезапуск анимации
+    el.classList.remove("toast--show");
+    void el.offsetWidth;
+    el.classList.add("toast--show");
+
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("toast--show"), ms);
+  }
+
   // ====== CART (DEALS) ======
   const cartOpenBtn = document.getElementById("cartOpenBtn");
   const cartModal = document.getElementById("cartModal");
@@ -98,6 +128,69 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const CART_KEY = "psm_cart_v1";
   let cart = loadCart();
+  // ====== MINI CART BAR (нижняя панель) ======
+  function ensureMiniCartBar() {
+    let bar = document.getElementById("miniCartBar");
+    if (bar) return bar;
+
+    bar = document.createElement("div");
+    bar.id = "miniCartBar";
+    bar.className = "mini-cart hidden";
+    bar.setAttribute("role", "region");
+    bar.setAttribute("aria-label", "Корзина");
+
+    bar.innerHTML = `
+      <div class="mini-cart__inner">
+        <div class="mini-cart__text">
+          <span class="mini-cart__label">В корзине:</span>
+          <span class="mini-cart__count" id="miniCartCount">0</span>
+          <span class="mini-cart__dot">·</span>
+          <span class="mini-cart__sum" id="miniCartSum">0</span><span class="mini-cart__rub">₽</span>
+        </div>
+
+        <div class="mini-cart__actions">
+          <button type="button" class="mini-cart__open" id="miniCartOpenBtn">Открыть</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(bar);
+
+    // открыть корзину по кнопке
+    const openBtn = bar.querySelector("#miniCartOpenBtn");
+    openBtn?.addEventListener("click", () => openCart());
+
+    // optional: клик по тексту тоже открывает
+    bar
+      .querySelector(".mini-cart__text")
+      ?.addEventListener("click", () => openCart());
+
+    return bar;
+  }
+
+  const miniCartBar = ensureMiniCartBar();
+  const miniCartCountEl = document.getElementById("miniCartCount");
+  const miniCartSumEl = document.getElementById("miniCartSum");
+
+  function calcCartSum() {
+    return cart.reduce((s, it) => s + Number(it.rubPrice || 0), 0);
+  }
+
+  function updateMiniCartBar() {
+    if (!miniCartBar) return;
+
+    if (!cart.length) {
+      miniCartBar.classList.add("hidden");
+      return;
+    }
+
+    const sum = calcCartSum();
+
+    if (miniCartCountEl) miniCartCountEl.textContent = String(cart.length);
+    if (miniCartSumEl) miniCartSumEl.textContent = String(sum);
+
+    miniCartBar.classList.remove("hidden");
+  }
 
   function loadCart() {
     try {
@@ -123,16 +216,25 @@ document.addEventListener("DOMContentLoaded", () => {
     cartModal.setAttribute("aria-hidden", "true");
   }
 
+  // ✅ ДОБАВЛЕНИЕ В КОРЗИНУ БЕЗ АВТООТКРЫТИЯ
+  // Возвращает: "added" | "exists"
   function cartAdd(item) {
     // уникальность по url+region
     const key = item.region + "|" + item.url;
-    if (cart.some((x) => x.region + "|" + x.url === key)) {
+    const exists = cart.some((x) => x.region + "|" + x.url === key);
+
+    if (exists) {
+      // просто обновим счётчик/рендер, но НЕ открываем корзину
       renderCart();
-      return;
+      showToast("Уже в корзине", "error", 1400);
+      return "exists";
     }
+
     cart.push(item);
     saveCart();
     renderCart();
+    showToast("Игра добавлена в корзину", "success", 1600);
+    return "added";
   }
 
   function cartRemove(region, url) {
@@ -145,21 +247,29 @@ document.addEventListener("DOMContentLoaded", () => {
     cart = [];
     saveCart();
     renderCart();
+    showToast("Корзина очищена", "success", 1400);
   }
 
   function renderCart() {
     if (cartCount)
       cartCount.textContent = cart.length ? String(cart.length) : "";
 
-    if (!cartList || !cartTotal || !cartEmpty) return;
+    // ✅ если вдруг каких-то DOM-элементов нет — всё равно обновим мини-панель
+    if (!cartList || !cartTotal || !cartEmpty) {
+      updateMiniCartBar();
+      return;
+    }
 
     cartList.innerHTML = "";
 
+    // ✅ если корзина пустая — показываем empty + прячем мини-панель
     if (cart.length === 0) {
       cartEmpty.style.display = "block";
       cartTotal.textContent = "0";
+      updateMiniCartBar();
       return;
     }
+
     cartEmpty.style.display = "none";
 
     let sum = 0;
@@ -188,9 +298,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     cartTotal.textContent = sum.toFixed(0);
+
+    // ✅ обновляем мини-панель после рендера
+    updateMiniCartBar();
   }
 
-  // Открытие/закрытие корзины
+  // Открытие/закрытие корзины (теперь ТОЛЬКО вручную)
   if (cartOpenBtn) cartOpenBtn.addEventListener("click", openCart);
   if (cartCloseBtn) cartCloseBtn.addEventListener("click", closeCart);
   if (cartOverlay) cartOverlay.addEventListener("click", closeCart);
@@ -603,18 +716,18 @@ ${lines.join("\n\n")}
     };
   }
 
-  // ✅ Кнопка "Купить" в модалке = добавить в корзину (без WhatsApp)
+  // ✅ Кнопка "Купить" в модалке = добавить в корзину (без авто-открытия)
   if (dealModalBuy) {
     dealModalBuy.addEventListener("click", (e) => {
       e.preventDefault();
       if (!currentModalItem) return;
       cartAdd(currentModalItem);
-      openCart();
+      // ❌ openCart();  // убрали авто-открытие
     });
   }
 
   // ✅ ЕДИНСТВЕННЫЙ обработчик кликов по гриду:
-  // - клик по кнопке "Купить" -> в корзину
+  // - клик по кнопке "Купить" -> в корзину + тост
   // - клик по карточке -> модалка
   dealsGrid?.addEventListener("click", async (e) => {
     // 1) Кнопка "Купить" (добавить в корзину)
@@ -632,7 +745,7 @@ ${lines.join("\n\n")}
       };
 
       cartAdd(item);
-      openCart();
+      // ❌ openCart(); // убрали авто-открытие
       return;
     }
 
@@ -745,7 +858,7 @@ ${lines.join("\n\n")}
     />
     ${
       it.discountPercent != null
-        ? `<div class="deal-badge">-${it.discountPercent}%</div>`
+        ? `<div class="deal-badge">-${it.discountPercent}</div>`
         : ``
     }
   </div>
