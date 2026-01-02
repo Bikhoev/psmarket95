@@ -127,7 +127,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const cartEmpty = document.getElementById("cartEmpty");
 
   const CART_KEY = "psm_cart_v1";
+
+  // ✅ ВАЖНО: loadCart() должен быть ДО cart = loadCart()
+  function loadCart() {
+    try {
+      const raw = localStorage.getItem(CART_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
   let cart = loadCart();
+
+  function saveCart() {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  }
+
+  function openCart() {
+    if (!cartModal) return;
+    cartModal.classList.remove("hidden");
+    cartModal.setAttribute("aria-hidden", "false");
+    renderCart();
+  }
+
+  function closeCart() {
+    if (!cartModal) return;
+    cartModal.classList.add("hidden");
+    cartModal.setAttribute("aria-hidden", "true");
+  }
+
   // ====== MINI CART BAR (нижняя панель) ======
   function ensureMiniCartBar() {
     let bar = document.getElementById("miniCartBar");
@@ -157,13 +186,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.appendChild(bar);
 
     // открыть корзину по кнопке
-    const openBtn = bar.querySelector("#miniCartOpenBtn");
-    openBtn?.addEventListener("click", () => openCart());
+    bar.querySelector("#miniCartOpenBtn")?.addEventListener("click", openCart);
 
-    // optional: клик по тексту тоже открывает
-    bar
-      .querySelector(".mini-cart__text")
-      ?.addEventListener("click", () => openCart());
+    // опционально: клик по тексту тоже открывает
+    bar.querySelector(".mini-cart__text")?.addEventListener("click", openCart);
 
     return bar;
   }
@@ -192,39 +218,13 @@ document.addEventListener("DOMContentLoaded", () => {
     miniCartBar.classList.remove("hidden");
   }
 
-  function loadCart() {
-    try {
-      const raw = localStorage.getItem(CART_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  }
-  function saveCart() {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
-  }
-
-  function openCart() {
-    if (!cartModal) return;
-    cartModal.classList.remove("hidden");
-    cartModal.setAttribute("aria-hidden", "false");
-    renderCart();
-  }
-  function closeCart() {
-    if (!cartModal) return;
-    cartModal.classList.add("hidden");
-    cartModal.setAttribute("aria-hidden", "true");
-  }
-
   // ✅ ДОБАВЛЕНИЕ В КОРЗИНУ БЕЗ АВТООТКРЫТИЯ
   // Возвращает: "added" | "exists"
   function cartAdd(item) {
-    // уникальность по url+region
     const key = item.region + "|" + item.url;
     const exists = cart.some((x) => x.region + "|" + x.url === key);
 
     if (exists) {
-      // просто обновим счётчик/рендер, но НЕ открываем корзину
       renderCart();
       showToast("Уже в корзине", "error", 1400);
       return "exists";
@@ -298,45 +298,41 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     cartTotal.textContent = sum.toFixed(0);
-
-    // ✅ обновляем мини-панель после рендера
     updateMiniCartBar();
   }
 
   // Открытие/закрытие корзины (теперь ТОЛЬКО вручную)
-  if (cartOpenBtn) cartOpenBtn.addEventListener("click", openCart);
-  if (cartCloseBtn) cartCloseBtn.addEventListener("click", closeCart);
-  if (cartOverlay) cartOverlay.addEventListener("click", closeCart);
+  cartOpenBtn?.addEventListener("click", openCart);
+  cartCloseBtn?.addEventListener("click", closeCart);
+  cartOverlay?.addEventListener("click", closeCart);
 
   // Очистить
-  if (cartClearBtn) cartClearBtn.addEventListener("click", cartClear);
+  cartClearBtn?.addEventListener("click", cartClear);
 
   // Оформить в WhatsApp (только из корзины)
-  if (cartWhatsappBtn) {
-    cartWhatsappBtn.addEventListener("click", () => {
-      if (!cart.length) return;
+  cartWhatsappBtn?.addEventListener("click", () => {
+    if (!cart.length) return;
 
-      const lines = cart.map(
-        (it, idx) =>
-          `${idx + 1}) ${it.title} — ${it.rubPrice} ₽ (${it.region})\n${it.url}`
-      );
+    const lines = cart.map(
+      (it, idx) =>
+        `${idx + 1}) ${it.title} — ${it.rubPrice} ₽ (${it.region})\n${it.url}`
+    );
 
-      const total = cart.reduce((s, it) => s + (it.rubPrice || 0), 0);
+    const total = cart.reduce((s, it) => s + (it.rubPrice || 0), 0);
 
-      const msg = `Здравствуйте!
+    const msg = `Здравствуйте!
 Хочу купить игры:
 
 ${lines.join("\n\n")}
 
 Итого: ${total} ₽`;
 
-      const waUrl =
-        "https://wa.me/" + WHATSAPP_PHONE + "?text=" + encodeURIComponent(msg);
-      window.location.href = waUrl;
-    });
-  }
+    const waUrl =
+      "https://wa.me/" + WHATSAPP_PHONE + "?text=" + encodeURIComponent(msg);
+    window.location.href = waUrl;
+  });
 
-  // при загрузке страницы обновим счётчик
+  // при загрузке страницы обновим счётчик + мини-панель
   renderCart();
 
   // ====== SUBS ======

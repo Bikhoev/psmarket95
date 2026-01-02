@@ -2044,3 +2044,43 @@ section[id] {
 .toast--error {
   background: rgba(160, 25, 25, 0.92);
 }
+.mini-cart {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 9999;
+
+  background: rgba(10, 14, 30, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 10px 12px;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mini-cart__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mini-cart__text {
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.mini-cart__open {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+}
+body {
+  padding-bottom: 90px;
+}
