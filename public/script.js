@@ -140,29 +140,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let cart = loadCart();
 
-  function saveCart() {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  // ====== FAVORITES STORAGE ======
+  const FAV_KEY = "psm_favs_v1";
+  let favs = loadFavs(); // Set(url)
+
+  function loadFavs() {
+    try {
+      const raw = localStorage.getItem(FAV_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  }
+  function saveFavs() {
+    localStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favs)));
+  }
+  function isFavorite(url) {
+    return favs.has(String(url || ""));
   }
 
-  function openCart() {
-    if (!cartModal) return;
-
-    // ✅ прячем мини-панель, чтобы не перекрывала корзину
-    hideMiniCartBar();
-
-    cartModal.classList.remove("hidden");
-    cartModal.setAttribute("aria-hidden", "false");
-    renderCart();
+  // ✅ единая функция обновления счётчиков избранного
+  function updateFavHeaderCount() {
+    const el = document.getElementById("favCount");
+    if (!el) return;
+    const n = favs.size;
+    el.textContent = n ? String(n) : "";
   }
 
-  function closeCart() {
-    if (!cartModal) return;
-
-    cartModal.classList.add("hidden");
-    cartModal.setAttribute("aria-hidden", "true");
-
-    // ✅ возвращаем мини-панель (если в корзине есть товары)
-    showMiniCartBarIfNeeded();
+  function toggleFavorite(url) {
+    const u = String(url || "");
+    if (!u) return false;
+    if (favs.has(u)) favs.delete(u);
+    else favs.add(u);
+    saveFavs();
+    updateFavHeaderCount();
+    return favs.has(u); // true если теперь в избранном
   }
 
   // ====== MINI CART BAR (нижняя панель) ======
@@ -173,6 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
     bar = document.createElement("div");
     bar.id = "miniCartBar";
     bar.className = "mini-cart hidden";
+    bar.style.display = "none"; // ✅ железно скрываем до первой покупки
     bar.setAttribute("role", "region");
     bar.setAttribute("aria-label", "Корзина");
 
@@ -213,18 +227,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateMiniCartBar() {
     if (!miniCartBar) return;
 
-    // ✅ если корзина открыта — мини-панель не показываем вообще
-    if (cartModal && !cartModal.classList.contains("hidden")) {
+    if (!cart.length) {
       miniCartBar.classList.add("hidden");
+      miniCartBar.style.display = "none"; // ✅ прячем всегда
       return;
-      function hideMiniCartBar() {
-        if (!miniCartBar) return;
-        miniCartBar.classList.add("hidden");
-      }
-
-      function showMiniCartBarIfNeeded() {
-        updateMiniCartBar(); // сама решит показывать или нет
-      }
     }
 
     const sum = calcCartSum();
@@ -233,19 +239,44 @@ document.addEventListener("DOMContentLoaded", () => {
     if (miniCartSumEl) miniCartSumEl.textContent = String(sum);
 
     miniCartBar.classList.remove("hidden");
+    miniCartBar.style.display = ""; // ✅ показываем только когда есть товары
   }
+
   function hideMiniCartBar() {
     if (!miniCartBar) return;
     miniCartBar.classList.add("hidden");
   }
 
   function showMiniCartBarIfNeeded() {
-    // показываем только если есть товары (updateMiniCartBar сам решит)
     updateMiniCartBar();
   }
 
+  function saveCart() {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  }
+
+  function openCart() {
+    if (!cartModal) return;
+
+    // ✅ прячем мини-панель, чтобы не перекрывала корзину
+    hideMiniCartBar();
+
+    cartModal.classList.remove("hidden");
+    cartModal.setAttribute("aria-hidden", "false");
+    renderCart();
+  }
+
+  function closeCart() {
+    if (!cartModal) return;
+
+    cartModal.classList.add("hidden");
+    cartModal.setAttribute("aria-hidden", "true");
+
+    // ✅ возвращаем мини-панель (если в корзине есть товары)
+    showMiniCartBarIfNeeded();
+  }
+
   // ✅ ДОБАВЛЕНИЕ В КОРЗИНУ БЕЗ АВТООТКРЫТИЯ
-  // Возвращает: "added" | "exists"
   function cartAdd(item) {
     const key = item.region + "|" + item.url;
     const exists = cart.some((x) => x.region + "|" + x.url === key);
@@ -666,7 +697,7 @@ ${lines.join("\n\n")}
 
     sections.forEach((section) => observer.observe(section));
   }
-  // FIX mobile: если IntersectionObserver не сработал сразу — покажем секции принудительно через секунду
+
   setTimeout(() => {
     document
       .querySelectorAll("section.section, section.section-alt")
@@ -677,6 +708,7 @@ ${lines.join("\n\n")}
 
   // ====== DEALS (Скидки) ======
   const dealsGrid = document.getElementById("dealsGrid");
+
   const dealsTabUA = document.getElementById("dealsTabUA");
   const dealsTabTR = document.getElementById("dealsTabTR");
   const dealsSortSelect = document.getElementById("dealsSort");
@@ -686,6 +718,408 @@ ${lines.join("\n\n")}
   let dealsSort = "popular"; // popular | discount
   let dealsOffset = 0;
   const DEALS_LIMIT = 24;
+
+  // ====== DEALS SEARCH + FAVORITES VIEW ======
+  let dealsSearchQuery = "";
+  let dealsSearchActive = false;
+
+  // Режим "показываем только избранное"
+  let favoritesViewActive = false;
+
+  // Полный список скидок (кэш)
+  // ключ = `${region}|${sort}` -> массив всех items
+  const dealsFullCache = new Map();
+
+  // ====== HEADER FAVORITES BUTTON (рядом с корзиной) ======
+  function ensureFavHeaderButton() {
+    if (document.getElementById("favOpenBtn")) return;
+    if (!cartOpenBtn) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "favOpenBtn";
+    btn.className = "header-fav-btn";
+    btn.setAttribute("aria-label", "Избранное");
+    btn.innerHTML = `
+    <span class="header-fav-btn__icon">♥</span>
+    <span class="header-fav-btn__count" id="favCount"></span>
+  `;
+
+    // Вставим рядом с кнопкой корзины
+    cartOpenBtn.insertAdjacentElement("beforebegin", btn);
+
+    btn.addEventListener("click", async () => {
+      ensureDealsSearchUI();
+
+      // toggle избранного
+      favoritesViewActive = !favoritesViewActive;
+
+      // сбрасываем текстовый поиск при переключении режима
+      const input = document.getElementById("dealsSearchInput");
+      if (input) input.value = "";
+      dealsSearchQuery = "";
+      dealsSearchActive = false;
+
+      if (favoritesViewActive) {
+        await renderFavoritesView();
+        showToast("Показаны избранные игры", "success", 1400);
+      } else {
+        showToast("Избранное закрыто", "success", 1200);
+        fetchDealsPage({ reset: true }).catch((e) => {
+          if (dealsGrid)
+            dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
+        });
+      }
+
+      syncDealsControls();
+    });
+
+    // обновляет цифру на кнопке ♥ (функция у тебя есть выше по файлу)
+    updateFavHeaderCount?.();
+  }
+
+  // Создадим кнопку в шапке сразу
+  ensureFavHeaderButton();
+
+  // ====== UI поиска (без кнопки "Найти") + отдельное закрытие избранного ======
+  function ensureDealsSearchUI() {
+    if (document.getElementById("dealsSearchWrap")) return;
+
+    const anchor =
+      dealsSortSelect?.parentElement ||
+      dealsSortSelect ||
+      dealsGrid?.parentElement;
+
+    if (!anchor) return;
+
+    const wrap = document.createElement("div");
+    wrap.id = "dealsSearchWrap";
+    wrap.className = "deals-search";
+
+    // ✅ Внутри input: только очистка текста
+    // ✅ Справа отдельно: закрытие избранного
+    wrap.innerHTML = `
+    <div class="deals-search__row">
+      <div class="deals-search__field">
+        <input
+          id="dealsSearchInput"
+          class="deals-search__input"
+          type="search"
+          placeholder="Поиск по скидкам (например: Mafia, FC26, UFC)…"
+          autocomplete="off"
+        />
+        <button
+          id="dealsSearchClear"
+          class="deals-search__clear hidden"
+          type="button"
+          aria-label="Очистить поиск">×</button>
+      </div>
+
+      <button
+        id="favCloseBtn"
+        class="deals-fav-close hidden"
+        type="button"
+        aria-label="Закрыть избранное">×</button>
+    </div>
+  `;
+
+    if (dealsSortSelect && dealsSortSelect.parentElement) {
+      dealsSortSelect.parentElement.insertAdjacentElement("afterend", wrap);
+    } else if (dealsGrid) {
+      dealsGrid.insertAdjacentElement("beforebegin", wrap);
+    } else {
+      anchor.appendChild(wrap);
+    }
+
+    const input = document.getElementById("dealsSearchInput");
+    const clear = document.getElementById("dealsSearchClear");
+    const favCloseBtn = document.getElementById("favCloseBtn");
+
+    // Ввод -> фильтрация на лету
+    input?.addEventListener("input", () => {
+      debounceSearch(() => applyDealsSearch(input.value), 180);
+    });
+
+    // Escape -> если есть текст — чистим поиск; если текста нет — просто blur
+    input?.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        const q = String(input.value || "").trim();
+        if (q) clearDealsSearch();
+        input.blur();
+      }
+    });
+
+    // крестик ВНУТРИ поля -> очистка текста
+    clear?.addEventListener("click", () => {
+      clearDealsSearch();
+      input?.focus();
+    });
+
+    // ✅ отдельная кнопка закрытия избранного справа
+    favCloseBtn?.addEventListener("click", async () => {
+      favoritesViewActive = false;
+
+      // если в поле есть текст — оставим поиск, но уже по всем скидкам
+      const q = String(input?.value || "").trim();
+      if (q) {
+        dealsSearchQuery = q;
+        dealsSearchActive = true;
+        await applyDealsSearch(q);
+        syncDealsControls();
+        return;
+      }
+
+      // иначе — обычная лента
+      dealsSearchQuery = "";
+      dealsSearchActive = false;
+
+      fetchDealsPage({ reset: true }).catch((e) => {
+        if (dealsGrid)
+          dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
+      });
+
+      syncDealsControls();
+    });
+
+    syncDealsControls();
+  }
+
+  // ✅ видимость двух кнопок управления:
+  // - крестик очистки (внутри поля) -> только когда есть текст
+  // - крестик закрытия избранного (справа) -> только когда favoritesViewActive = true
+  function syncDealsControls() {
+    const input = document.getElementById("dealsSearchInput");
+    const clearBtn = document.getElementById("dealsSearchClear");
+    const favCloseBtn = document.getElementById("favCloseBtn");
+
+    const hasText = !!String(input?.value || "").trim();
+
+    if (clearBtn) clearBtn.classList.toggle("hidden", !hasText);
+    if (favCloseBtn)
+      favCloseBtn.classList.toggle("hidden", !favoritesViewActive);
+  }
+
+  // маленький debounce
+  let _searchT = null;
+  function debounceSearch(fn, ms = 180) {
+    clearTimeout(_searchT);
+    _searchT = setTimeout(fn, ms);
+  }
+
+  // Загрузить ВЕСЬ список скидок в память (для поиска/избранного)
+  async function loadAllDealsForCurrentRegionSort() {
+    const key = `${dealsRegion}|${dealsSort}`;
+    if (dealsFullCache.has(key)) return dealsFullCache.get(key);
+
+    if (dealsGrid)
+      dealsGrid.innerHTML =
+        "<div class='deal-meta'>Загружаем полный список для поиска…</div>";
+
+    const all = [];
+    let offset = 0;
+    const limit = 60;
+    let total = Infinity;
+
+    while (offset < total) {
+      const apiUrl = `/api/deals?region=${dealsRegion}&pages=5&sort=${dealsSort}&offset=${offset}&limit=${limit}`;
+      const res = await fetch(apiUrl);
+      const data = await res.json();
+
+      if (!data.items)
+        throw new Error(
+          data.error || "Не удалось загрузить скидки для поиска."
+        );
+
+      total = Number(data.total || 0);
+      all.push(...data.items);
+
+      offset += data.items.length;
+      if (data.items.length === 0) break;
+    }
+
+    dealsFullCache.set(key, all);
+    return all;
+  }
+
+  function normalizeForSearch(s) {
+    return String(s || "")
+      .toLowerCase()
+      .replace(/\u00A0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function filterDeals(items, query) {
+    const q = normalizeForSearch(query);
+    if (!q) return items;
+    return items.filter((it) => normalizeForSearch(it.title).includes(q));
+  }
+
+  function renderDealsFromItems(items) {
+    if (!dealsGrid) return;
+
+    if (!items || items.length === 0) {
+      dealsGrid.innerHTML = "<div class='deal-meta'>Ничего не найдено.</div>";
+      if (dealsMoreBtn) dealsMoreBtn.style.display = "none";
+      return;
+    }
+
+    const cards = items
+      .map((it) => {
+        const meta =
+          it.discountPercent != null
+            ? `-${it.discountPercent}% • ${it.psOffer}`
+            : it.psOffer;
+
+        const safeTitle = (it.title || "").replace(/"/g, "&quot;");
+        const img = makeHiResImg(it.img, 720);
+
+        const favActive = isFavorite(it.url) ? "fav-btn--active" : "";
+
+        return `
+<article class="deal-card"
+  data-url="${it.url}"
+  data-title="${safeTitle}"
+  data-img="${img}"
+  data-rub="${it.rubPrice}">
+  <div class="deal-media">
+
+    <button class="fav-btn ${favActive}" type="button"
+      aria-label="Добавить в избранное"
+      data-action="toggle-fav"
+      data-url="${it.url}">
+      ♥
+    </button>
+
+    <img class="deal-img"
+      src="${makeHiResImg(it.img, 720)}"
+      srcset="${buildSrcset(it.img)}"
+      sizes="(max-width: 800px) 50vw, 16vw"
+      alt="${safeTitle}"
+      loading="lazy"
+    />
+    ${
+      it.discountPercent != null
+        ? `<div class="deal-badge">-${it.discountPercent}</div>`
+        : ``
+    }
+  </div>
+
+  <div class="deal-body">
+    <div class="deal-title" title="${safeTitle}">${it.title}</div>
+
+    <div class="deal-priceRow">
+      <div class="deal-rub">${it.rubPrice} ₽</div>
+      <div class="deal-ps">${meta || ""}</div>
+    </div>
+
+    <div class="deal-actions">
+      <button class="deal-btn deal-buy" type="button"
+        data-action="add-to-cart"
+        data-title="${safeTitle}"
+        data-img="${img}"
+        data-url="${it.url}"
+        data-rub="${it.rubPrice}"
+        data-region="${dealsRegion}">
+        Купить
+      </button>
+    </div>
+  </div>
+</article>
+`;
+      })
+      .join("");
+
+    dealsGrid.innerHTML = cards;
+    if (dealsMoreBtn) dealsMoreBtn.style.display = "none";
+  }
+
+  async function renderFavoritesView() {
+    ensureDealsSearchUI();
+
+    if (!dealsGrid) return;
+
+    if (!favs || !favs.size) {
+      dealsGrid.innerHTML =
+        "<div class='deal-meta'>В избранном пока пусто. Нажми ♥ на игре — и она появится здесь.</div>";
+      if (dealsMoreBtn) dealsMoreBtn.style.display = "none";
+      syncDealsControls();
+      return;
+    }
+
+    const all = await loadAllDealsForCurrentRegionSort();
+    const favItems = (all || []).filter((it) => isFavorite(it.url));
+
+    // если есть поиск — фильтруем внутри избранного
+    const q = String(dealsSearchQuery || "").trim();
+    const shown = q ? filterDeals(favItems, q) : favItems;
+
+    renderDealsFromItems(shown);
+    syncDealsControls();
+  }
+
+  async function applyDealsSearch(query) {
+    const q = String(query || "");
+    dealsSearchQuery = q;
+
+    ensureDealsSearchUI();
+
+    // пусто -> выключаем поиск
+    if (!q.trim()) {
+      dealsSearchActive = false;
+
+      if (favoritesViewActive) {
+        await renderFavoritesView();
+        syncDealsControls();
+        return;
+      }
+
+      fetchDealsPage({ reset: true }).catch((e) => {
+        if (dealsGrid)
+          dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
+      });
+
+      syncDealsControls();
+      return;
+    }
+
+    dealsSearchActive = true;
+
+    // если избранное активно — фильтруем только избранное
+    if (favoritesViewActive) {
+      await renderFavoritesView();
+      syncDealsControls();
+      return;
+    }
+
+    // иначе — фильтруем полный список скидок
+    const all = await loadAllDealsForCurrentRegionSort();
+    const filtered = filterDeals(all, q);
+    renderDealsFromItems(filtered);
+    syncDealsControls();
+  }
+
+  function clearDealsSearch() {
+    dealsSearchQuery = "";
+    dealsSearchActive = false;
+
+    const input = document.getElementById("dealsSearchInput");
+    if (input) input.value = "";
+
+    if (favoritesViewActive) {
+      renderFavoritesView();
+      syncDealsControls();
+      return;
+    }
+
+    fetchDealsPage({ reset: true }).catch((e) => {
+      if (dealsGrid)
+        dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
+    });
+
+    syncDealsControls();
+  }
 
   // ====== MODAL HANDLERS ======
   const dealModal = document.getElementById("dealModal");
@@ -703,12 +1137,57 @@ ${lines.join("\n\n")}
 
   let currentModalItem = null;
 
+  // ❤️ FAVORITE button inside modal (рядом с Купить)
+  function ensureModalFavButton() {
+    if (document.getElementById("dealModalFavBtn")) return;
+    if (!dealModalBuy) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "dealModalFavBtn";
+    btn.className = "modal-fav";
+    btn.setAttribute("aria-label", "Избранное");
+    btn.textContent = "♥";
+
+    dealModalBuy.insertAdjacentElement("afterend", btn);
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!currentModalItem?.url) return;
+
+      const nowFav = toggleFavorite(currentModalItem.url);
+      syncModalFavButton();
+
+      showToast(
+        nowFav ? "Добавлено в избранное" : "Удалено из избранного",
+        "success",
+        1400
+      );
+
+      // если мы в избранном режиме и удалили — карточка должна исчезнуть
+      if (favoritesViewActive && !nowFav) {
+        renderFavoritesView();
+      }
+    });
+  }
+
+  function syncModalFavButton() {
+    const btn = document.getElementById("dealModalFavBtn");
+    if (!btn) return;
+
+    const active = currentModalItem?.url
+      ? isFavorite(currentModalItem.url)
+      : false;
+    btn.classList.toggle("modal-fav--active", active);
+  }
+
   function openDealModal() {
     if (!dealModal) return;
     dealModal.classList.remove("hidden");
     dealModal.setAttribute("aria-hidden", "false");
     document.body.classList.add("menu-open");
   }
+
   function closeDealModal() {
     if (!dealModal) return;
     dealModal.classList.add("hidden");
@@ -728,7 +1207,6 @@ ${lines.join("\n\n")}
     }
   });
 
-  // ✅ FIX: обложка модалки не ломает интерфейс, если битая
   if (dealModalImg) {
     dealModalImg.onerror = () => {
       dealModalImg.style.display = "none";
@@ -738,21 +1216,48 @@ ${lines.join("\n\n")}
     };
   }
 
-  // ✅ Кнопка "Купить" в модалке = добавить в корзину (без авто-открытия)
   if (dealModalBuy) {
     dealModalBuy.addEventListener("click", (e) => {
       e.preventDefault();
       if (!currentModalItem) return;
       cartAdd(currentModalItem);
-      // ❌ openCart();  // убрали авто-открытие
     });
   }
 
   // ✅ ЕДИНСТВЕННЫЙ обработчик кликов по гриду:
-  // - клик по кнопке "Купить" -> в корзину + тост
-  // - клик по карточке -> модалка
   dealsGrid?.addEventListener("click", async (e) => {
-    // 1) Кнопка "Купить" (добавить в корзину)
+    // 0) ❤️ Избранное (сердечко на обложке)
+    const favBtn = e.target.closest('[data-action="toggle-fav"]');
+    if (favBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const url = favBtn.dataset.url || "";
+      const nowFav = toggleFavorite(url);
+
+      favBtn.classList.toggle("fav-btn--active", nowFav);
+
+      // если мы сейчас в избранном режиме и удалили — карточка должна исчезнуть
+      if (favoritesViewActive && !nowFav) {
+        await renderFavoritesView();
+      }
+
+      // если модалка на этой игре открыта — синхронизируем кнопку
+      if (currentModalItem?.url && currentModalItem.url === url) {
+        syncModalFavButton();
+      }
+
+      showToast(
+        nowFav ? "Добавлено в избранное" : "Удалено из избранного",
+        "success",
+        1400
+      );
+
+      syncDealsControls();
+      return;
+    }
+
+    // 1) Кнопка "Купить"
     const buyBtn = e.target.closest('[data-action="add-to-cart"]');
     if (buyBtn) {
       e.preventDefault();
@@ -767,7 +1272,6 @@ ${lines.join("\n\n")}
       };
 
       cartAdd(item);
-      // ❌ openCart(); // убрали авто-открытие
       return;
     }
 
@@ -780,7 +1284,6 @@ ${lines.join("\n\n")}
     const img = card.dataset.img || "";
     const rub = card.dataset.rub || "";
 
-    // наполнение "сразу"
     dealModalTitle.textContent = title;
 
     const hi = makeHiResImg(img, 720);
@@ -800,7 +1303,6 @@ ${lines.join("\n\n")}
     dealModalRu.textContent = "Загрузка…";
     dealModalUntil.textContent = "—";
 
-    // current item для модалки (чтобы "Купить" добавляло именно её)
     currentModalItem = {
       title,
       img,
@@ -809,7 +1311,9 @@ ${lines.join("\n\n")}
       region: dealsRegion,
     };
 
-    // если ссылки нет — просто откроем модалку и покажем сообщение
+    ensureModalFavButton();
+    syncModalFavButton();
+
     openDealModal();
     if (!url) {
       dealModalPlatform.textContent = "Нет ссылки на товар";
@@ -838,17 +1342,31 @@ ${lines.join("\n\n")}
   async function fetchDealsPage({ reset = false } = {}) {
     if (!dealsGrid) return;
 
+    ensureDealsSearchUI();
+
+    // если включён избранный режим — показываем избранное (не пейджим)
+    if (favoritesViewActive) {
+      await renderFavoritesView();
+      syncDealsControls();
+      return;
+    }
+
+    // если активен поиск — показываем фильтр (не пейджим)
+    if (dealsSearchActive && dealsSearchQuery && dealsSearchQuery.trim()) {
+      await applyDealsSearch(dealsSearchQuery);
+      syncDealsControls();
+      return;
+    }
+
     if (reset) {
       dealsOffset = 0;
       dealsGrid.innerHTML = "<div class='deal-meta'>Загружаем скидки…</div>";
     }
 
-    // ✅ ВАЖНО ДЛЯ RENDER: относительный URL (без localhost)
     const apiUrl = `/api/deals?region=${dealsRegion}&pages=5&sort=${dealsSort}&offset=${dealsOffset}&limit=${DEALS_LIMIT}`;
 
     const res = await fetch(apiUrl);
     const data = await res.json();
-    console.log("DEALS LOADED:", data.items?.length, "total:", data.total);
 
     if (!data.items) throw new Error(data.error || "Не удалось загрузить.");
 
@@ -863,6 +1381,7 @@ ${lines.join("\n\n")}
 
         const safeTitle = (it.title || "").replace(/"/g, "&quot;");
         const img = makeHiResImg(it.img, 720);
+        const favActive = isFavorite(it.url) ? "fav-btn--active" : "";
 
         return `
 <article class="deal-card"
@@ -871,6 +1390,14 @@ ${lines.join("\n\n")}
   data-img="${img}"
   data-rub="${it.rubPrice}">
   <div class="deal-media">
+
+    <button class="fav-btn ${favActive}" type="button"
+      aria-label="Добавить в избранное"
+      data-action="toggle-fav"
+      data-url="${it.url}">
+      ♥
+    </button>
+
     <img class="deal-img"
       src="${makeHiResImg(it.img, 720)}"
       srcset="${buildSrcset(it.img)}"
@@ -911,14 +1438,14 @@ ${lines.join("\n\n")}
       .join("");
 
     dealsGrid.insertAdjacentHTML("beforeend", cards);
-
     dealsOffset += data.items.length;
 
-    // кнопка "Показать ещё"
     if (dealsMoreBtn) {
       dealsMoreBtn.style.display =
         dealsOffset >= data.total ? "none" : "inline-block";
     }
+
+    syncDealsControls();
   }
 
   function setDealsTabs(active) {
@@ -928,29 +1455,48 @@ ${lines.join("\n\n")}
 
   // вкладки региона
   if (dealsTabUA && dealsTabTR) {
-    dealsTabUA.addEventListener("click", () => {
+    dealsTabUA.addEventListener("click", async () => {
       dealsRegion = "ua";
       setDealsTabs("ua");
-      fetchDealsPage({ reset: true }).catch((e) => {
-        dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
-      });
+
+      // если мы в избранном режиме — перерисуем избранное для нового региона
+      if (favoritesViewActive) {
+        await renderFavoritesView();
+        syncDealsControls();
+        return;
+      }
+
+      clearDealsSearch();
     });
 
-    dealsTabTR.addEventListener("click", () => {
+    dealsTabTR.addEventListener("click", async () => {
       dealsRegion = "tr";
       setDealsTabs("tr");
-      fetchDealsPage({ reset: true }).catch((e) => {
-        dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
-      });
+
+      if (favoritesViewActive) {
+        await renderFavoritesView();
+        syncDealsControls();
+        return;
+      }
+
+      clearDealsSearch();
     });
   }
 
   // сортировка
   if (dealsSortSelect) {
-    dealsSortSelect.addEventListener("change", () => {
+    dealsSortSelect.addEventListener("change", async () => {
       dealsSort = dealsSortSelect.value;
+
+      if (favoritesViewActive) {
+        await renderFavoritesView();
+        syncDealsControls();
+        return;
+      }
+
       fetchDealsPage({ reset: true }).catch((e) => {
-        dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
+        if (dealsGrid)
+          dealsGrid.innerHTML = `<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`;
       });
     });
   }
@@ -967,14 +1513,12 @@ ${lines.join("\n\n")}
     });
   }
 
-  // старт
   async function safeFetchDealsFirstTime() {
     if (!dealsGrid) return;
 
     setDealsTabs("ua");
     if (dealsSortSelect) dealsSortSelect.value = "popular";
 
-    // на мобиле иногда нужно дождаться реального layout
     await new Promise((r) =>
       requestAnimationFrame(() => requestAnimationFrame(r))
     );
@@ -998,7 +1542,6 @@ ${lines.join("\n\n")}
     }
   }
 
-  // старт
   if (dealsGrid) {
     safeFetchDealsFirstTime();
   }
