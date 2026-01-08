@@ -2711,33 +2711,110 @@ body.menu-open .mini-cart {
     gap: 10px;
   }
 }
-/* ===== FIX: horizontal scroll on iPhone (badge overflow) ===== */
+/* ===== FIX: cart/fav badge pushes layout on mobile ===== */
 
-/* 1) Бейджи НЕ должны выходить за экран */
-.cart-icon-btn .cart-badge,
-.header-fav-btn__count {
-  top: 2px !important;
-  right: 2px !important; /* было -6px — из-за этого и вылезает */
-}
-
-/* если хочешь “как бы сверху”, но внутри — можно чуть приподнять */
-.cart-icon-btn .cart-badge,
-.header-fav-btn__count {
-  transform: translate(35%, -35%); /* визуально сверху, но без overflow */
-}
-
-/* 2) Страховка: убираем горизонтальный overflow у страницы */
+/* Страховка от горизонтального скролла */
 html,
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
+} /* лучше чем hidden на iOS */
+@supports not (overflow: clip) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
 }
 
-/* 3) На всякий случай: чтобы шапка не давала вылет */
-.header,
-.header-inner {
+/* Контейнер с сортировкой: пусть умеет ужиматься */
+.deals-sort {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0; /* критично для flex, чтобы select мог сжиматься */
+}
+
+/* Лейбл "Сортировка" не должен растягивать строку */
+.deals-sort .subs-type-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Select должен сжиматься, а не выталкивать кнопки */
+.deals-sort .subs-type {
+  flex: 1 1 auto;
+  min-width: 0; /* критично */
   max-width: 100%;
 }
-/* iOS иногда даёт "100vw шире экрана" из-за скроллбара/сейф-арии */
-body {
-  width: 100%;
+
+/* Кнопки ♥ и 🛒: фиксированный размер и relative для бейджа */
+.cart-icon-btn,
+.header-fav-btn {
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 14px; /* под твой стиль */
+}
+
+/* Чтобы иконка не "распирала" */
+.cart-icon-btn .cart-ico,
+.header-fav-btn__icon {
+  line-height: 1;
+  font-size: 18px;
+}
+
+/* Бейдж корзины: абсолютный, НЕ влияет на ширину кнопки */
+.cart-icon-btn .cart-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Если 0 — не показывать (у тебя JS уже делает "" иногда, но подстрахуемся) */
+.cart-icon-btn .cart-badge:empty {
+  display: none;
+}
+
+/* Бейдж избранного: тоже абсолютный */
+.header-fav-btn__count {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.header-fav-btn__count:empty {
+  display: none;
+}
+
+/* Доп. защита: на очень узких экранах можно чуть уменьшить gap */
+@media (max-width: 380px) {
+  .deals-sort {
+    gap: 8px;
+  }
+  .cart-icon-btn,
+  .header-fav-btn {
+    width: 42px;
+    height: 42px;
+  }
 }
