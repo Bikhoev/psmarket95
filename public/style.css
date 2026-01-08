@@ -2747,63 +2747,8 @@ body {
   max-width: 100%;
 }
 
-/* Кнопки ♥ и 🛒: фиксированный размер и relative для бейджа */
-.cart-icon-btn,
-.header-fav-btn {
-  position: relative;
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 14px; /* под твой стиль */
-}
-
-/* Чтобы иконка не "распирала" */
-.cart-icon-btn .cart-ico,
-.header-fav-btn__icon {
-  line-height: 1;
-  font-size: 18px;
-}
-
-/* Бейдж корзины: абсолютный, НЕ влияет на ширину кнопки */
-.cart-icon-btn .cart-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
 /* Если 0 — не показывать (у тебя JS уже делает "" иногда, но подстрахуемся) */
 .cart-icon-btn .cart-badge:empty {
-  display: none;
-}
-
-/* Бейдж избранного: тоже абсолютный */
-.header-fav-btn__count {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1;
-  white-space: nowrap;
-}
-.header-fav-btn__count:empty {
   display: none;
 }
 
