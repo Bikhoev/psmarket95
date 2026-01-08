@@ -2711,3 +2711,7 @@ body.menu-open .mini-cart {
     gap: 10px;
   }
 }
+/* страховка от горизонтального вылета */
+body {
+  overflow-x: hidden;
+}
