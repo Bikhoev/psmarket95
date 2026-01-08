@@ -2054,7 +2054,7 @@ section[id] {
   background: rgba(10, 14, 30, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
-  padding: 10px 12px;
+  padding: 1px 12px;
 
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -2761,5 +2761,18 @@ body {
   .header-fav-btn {
     width: 42px;
     height: 42px;
+  }
+}
+/* iOS Safari: не зумить страницу при фокусе на input */
+@media (max-width: 900px) {
+  #dealsSearchInput {
+    font-size: 16px; /* ключевое */
+    line-height: 1.2;
+  }
+
+  /* если у тебя внутри поля есть кнопки × — тоже фиксируем */
+  .deals-search__clear,
+  .deals-fav-close {
+    font-size: 16px;
   }
 }
