@@ -2711,7 +2711,33 @@ body.menu-open .mini-cart {
     gap: 10px;
   }
 }
-/* страховка от горизонтального вылета */
+/* ===== FIX: horizontal scroll on iPhone (badge overflow) ===== */
+
+/* 1) Бейджи НЕ должны выходить за экран */
+.cart-icon-btn .cart-badge,
+.header-fav-btn__count {
+  top: 2px !important;
+  right: 2px !important; /* было -6px — из-за этого и вылезает */
+}
+
+/* если хочешь “как бы сверху”, но внутри — можно чуть приподнять */
+.cart-icon-btn .cart-badge,
+.header-fav-btn__count {
+  transform: translate(35%, -35%); /* визуально сверху, но без overflow */
+}
+
+/* 2) Страховка: убираем горизонтальный overflow у страницы */
+html,
 body {
   overflow-x: hidden;
+}
+
+/* 3) На всякий случай: чтобы шапка не давала вылет */
+.header,
+.header-inner {
+  max-width: 100%;
+}
+/* iOS иногда даёт "100vw шире экрана" из-за скроллбара/сейф-арии */
+body {
+  width: 100%;
 }
