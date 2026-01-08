@@ -2148,31 +2148,46 @@ body {
 }
 
 /* =========================================
-   DEALS SEARCH (поиск по скидкам)
+   ✅ DEALS SEARCH (заменено на блок из 2-го CSS)
+   - убраны все дубли из 1-го CSS
+   - фикс двойного "x" на iOS (native cancel hidden)
 ========================================= */
 .deals-search {
   width: 100%;
-  max-width: 1100px;
-  margin: 10px auto 14px;
-  padding: 0 14px;
+  margin: 10px 0 14px;
 }
 
-.deals-search__inner {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 8px;
+.deals-search__row {
+  display: flex;
   align-items: center;
+  gap: 10px;
+  width: 100%;
 }
 
+.deals-search__field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Input */
 .deals-search__input {
   width: 100%;
   min-height: 44px;
-  padding: 10px 12px;
+  padding: 10px 44px 10px 12px; /* space for clear inside */
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.98);
   color: inherit;
   outline: none;
+}
+
+/* FIX: iOS Safari native clear (the 2nd x) */
+.deals-search__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.deals-search__input::-webkit-search-decoration {
+  -webkit-appearance: none;
 }
 
 .deals-search__input:focus {
@@ -2180,42 +2195,56 @@ body {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
 }
 
-.deals-search__btn,
+/* Clear "x" inside input */
 .deals-search__clear {
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 12px;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.1);
   color: inherit;
   cursor: pointer;
-  white-space: nowrap;
-  transition: transform 0.06s ease, background 0.2s ease;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
 }
 
-.deals-search__btn:active,
-.deals-search__clear:active {
-  transform: translateY(1px);
-}
-
-.deals-search__btn:hover,
-.deals-search__clear:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.deals-search__hint {
-  margin-top: 8px;
-  font-size: 13px;
-  opacity: 0.85;
-}
-
-/* Мобилка: кнопки компактнее и идут ниже, если не помещаются */
-@media (max-width: 560px) {
-  .deals-search__inner {
-    grid-template-columns: 1fr 1fr;
+@media (hover: hover) {
+  .deals-search__clear:hover {
+    background: rgba(255, 255, 255, 0.14);
   }
-  .deals-search__input {
-    grid-column: 1 / -1;
+}
+
+/* Close favorites button (right) */
+.deals-fav-close {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.deals-fav-close.hidden {
+  display: none;
+}
+
+@media (hover: hover) {
+  .deals-fav-close:hover {
+    background: rgba(255, 255, 255, 0.11);
   }
 }
 
@@ -2243,7 +2272,7 @@ body {
   z-index: 2;
 
   /* сердечко */
-  font-size: 18px;
+  font-size: 25px;
   line-height: 1;
   padding: 0;
 
@@ -2266,9 +2295,9 @@ body {
 
 /* активное (красное) */
 .fav-btn--active {
-  background: rgba(255, 0, 60, 0.22);
+  background: rgba(0, 0, 0, 0.414);
   border-color: rgba(255, 0, 60, 0.45);
-  color: rgba(255, 75, 110, 1);
+  color: rgb(186, 6, 42);
 }
 
 /* чуть меньше на маленьких экранах */
@@ -2310,7 +2339,7 @@ body {
 }
 
 .header-fav-btn__icon {
-  font-size: 16px;
+  font-size: 25px;
   line-height: 1;
   opacity: 0.9;
 }
@@ -2361,7 +2390,7 @@ body {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
-  font-size: 18px;
+  font-size: 25px;
   line-height: 1;
   display: inline-grid;
   place-items: center;
@@ -2546,324 +2575,103 @@ body {
 body.menu-open .mini-cart {
   display: none !important;
 }
+
+/* (ВАЖНО) В 1-м CSS было множество дублей блоков поиска скидок.
+   Я удалил все старые .deals-search* блоки и оставил только один (выше),
+   чтобы не было конфликтов и чтобы iOS фикс работал стабильно. */
+/* ===== MODAL: buy + fav в одну строку (как на фото 1) ===== */
+
+/* ВАЖНО: если у тебя есть контейнер .modal-head-info — убираем flex-column,
+   иначе две кнопки встанут столбиком */
+.modal-head-info {
+  display: block !important;
+}
+
+/* делаем “Купить” НЕ на всю ширину, чтобы рядом поместилось сердце */
+.modal-buy {
+  display: inline-flex !important;
+  width: auto !important;
+  min-width: 140px; /* можно 130-160 по вкусу */
+  margin-top: 12px;
+  vertical-align: middle;
+}
+
+/* сердце рядом */
+.modal-fav {
+  display: inline-grid !important;
+  margin-top: 12px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
 /* =========================================
-   DEALS SEARCH (live, без кнопки "Найти")
+   HEADER ICON BUTTONS: фиксируем ширину,
+   бейджи сверху (чтобы ничего не выталкивало)
 ========================================= */
-.deals-search {
-  width: 100%;
-  max-width: 1100px;
-  margin: 10px auto 14px;
-  padding: 0 14px;
+
+/* 1) контейнер в шапке не должен давать горизонтальный скролл */
+.header-inner {
+  min-width: 0;
 }
 
-.deals-search__row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.deals-search__field {
-  position: relative;
-  width: 100%;
-}
-
-.deals-search__input {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 44px 10px 12px; /* справа место под × */
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: inherit;
-  outline: none;
-}
-
-.deals-search__input:focus {
-  border-color: rgba(255, 255, 255, 0.32);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
-}
-
-/* × сброс внутри поля */
-.deals-search__clear {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.1);
-  color: inherit;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  line-height: 1;
-  padding: 0;
-}
-
-@media (hover: hover) {
-  .deals-search__clear:hover {
-    background: rgba(255, 255, 255, 0.14);
-  }
-}
-
-/* =========================================
-   FAVORITES HEADER BUTTON + CLOSE (×)
-========================================= */
-.header-fav-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 12px;
-  padding: 8px 10px;
-  min-height: 44px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.08);
-  color: inherit;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.06s ease;
-  white-space: nowrap;
-}
-
-.header-fav-btn:active {
-  transform: translateY(1px);
-}
-
-@media (hover: hover) {
-  .header-fav-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-  }
-}
-
-.header-fav-btn--active {
-  border-color: rgba(255, 0, 60, 0.35);
-  background: rgba(255, 0, 60, 0.12);
-}
-
-.header-fav-btn__icon {
-  font-size: 16px;
-  line-height: 1;
-  opacity: 0.9;
-}
-
-.header-fav-btn__count {
-  display: inline-grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  font-size: 12px;
-  background: rgba(255, 0, 60, 0.18);
-  border: 1px solid rgba(255, 0, 60, 0.35);
-  color: rgba(255, 140, 160, 1);
-}
-.header-fav-btn__count:empty {
-  display: none;
-}
-
-/* Кнопка закрыть избранное (×) */
-.fav-close {
-  min-height: 44px;
-  width: 44px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.08);
-  color: inherit;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  font-size: 20px;
-  line-height: 1;
-  padding: 0;
-}
-
-@media (hover: hover) {
-  .fav-close:hover {
-    background: rgba(255, 255, 255, 0.12);
-  }
-}
-
-/* Мобилка: переносим элементы красиво */
-@media (max-width: 560px) {
-  .deals-search__row {
-    grid-template-columns: 1fr auto auto;
-    gap: 8px;
-  }
-  .header-fav-btn__text {
-    display: none; /* оставим только сердечко + счётчик */
-  }
-}
-/* ===== Deals Search (live) ===== */
-.deals-search {
-  margin: 16px 0 18px;
-}
-
-.deals-search__inner {
+/* если у тебя есть обертка для иконок справа — лучше.
+   назови её как есть (например .header-actions), но если нет — пропусти */
+.header-actions,
+.header-right,
+.header-controls {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
-.deals-search__input {
-  flex: 1;
-  min-width: 220px;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  outline: none;
-}
-
-.deals-search__input::placeholder {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.deals-search__clear {
+/* 2) обе кнопки ОДИНАКОВЫЕ по размеру */
+.header-fav-btn,
+.cart-icon-btn {
+  position: relative;
+  flex: 0 0 44px; /* НЕ растём */
   width: 44px;
   height: 44px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.9);
-  cursor: pointer;
-}
-
-.deals-search__clear:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.deals-search__clear.hidden {
-  display: none;
-}
-
-/* Mobile: инпут чуть компактнее */
-@media (max-width: 680px) {
-  .deals-search__input {
-    height: 42px;
-    border-radius: 12px;
-  }
-  .deals-search__clear {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-  }
-}
-/* ====== SEARCH ROW LAYOUT ====== */
-.deals-search {
-  margin-top: 14px;
-}
-
-.deals-search__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* поле поиска занимает всю ширину */
-.deals-search__field {
-  position: relative;
-  flex: 1;
-}
-
-/* крестик очистки текста — внутри поля */
-.deals-search__clear {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.9);
-
-  cursor: pointer;
-}
-
-.deals-search__clear:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.deals-search__clear.hidden {
-  display: none;
-}
-
-/* ✅ отдельная кнопка закрытия избранного — справа от поля */
-.deals-fav-close {
-  width: 46px;
-  height: 46px;
   border-radius: 14px;
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.95);
-
-  cursor: pointer;
-}
-
-.deals-fav-close:hover {
-  background: rgba(255, 255, 255, 0.11);
-}
-
-.deals-fav-close.hidden {
-  display: none;
-}
-
-/* ====== HEADER FAVORITES BUTTON like CART PILL ======
-   (делаем кнопку "Избранное" похожей на кнопку корзины)
-*/
-.header-fav-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-
-  height: 46px;
-  padding: 0 14px;
-
-  border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.92);
 
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease,
-    transform 0.06s ease;
+  padding: 0; /* важно: ничего не раздувает */
+  overflow: visible; /* бейдж может выходить наружу */
+  transition: transform 0.15s ease, background 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.header-fav-btn:hover {
+.header-fav-btn:hover,
+.cart-icon-btn:hover {
+  transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.18);
 }
 
-.header-fav-btn:active {
+.header-fav-btn:active,
+.cart-icon-btn:active {
   transform: translateY(1px);
 }
 
-.header-fav-btn__icon {
-  font-size: 18px;
-  line-height: 1;
-  opacity: 0.95;
+/* 3) убираем влияние текста/счётчика на ширину (если вдруг есть) */
+.header-fav-btn__text {
+  display: none;
 }
 
-/* бейдж как у корзины */
-.header-fav-btn__count {
+/* 4) бейджи одинаково позиционируем сверху справа */
+.header-fav-btn__count,
+.cart-icon-btn .cart-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+
   min-width: 22px;
   height: 22px;
   padding: 0 7px;
@@ -2875,52 +2683,31 @@ body.menu-open .mini-cart {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
 
-  background: rgba(255, 64, 129, 0.22);
-  border: 1px solid rgba(255, 64, 129, 0.38);
-  color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  white-space: nowrap;
 }
 
-/* если пусто — скрываем полностью бейдж */
+/* цвета как у тебя */
+.cart-icon-btn .cart-badge {
+  background: rgba(40, 120, 255, 0.95);
+}
+
+.header-fav-btn__count {
+  background: rgba(255, 64, 129, 0.22);
+  border-color: rgba(255, 64, 129, 0.38);
+}
+
+/* если пусто — скрыть */
+.cart-icon-btn .cart-badge:empty,
 .header-fav-btn__count:empty {
   display: none;
 }
-.deals-search__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.deals-search__field {
-  position: relative;
-  flex: 1;
-}
-.deals-fav-close {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.95);
-  cursor: pointer;
-}
-.deals-fav-close.hidden {
-  display: none;
-}
-/* Убираем встроенный крестик у input[type=search] (Chrome/Safari/Edge) */
-.deals-search__input::-webkit-search-cancel-button {
-  -webkit-appearance: none;
-  appearance: none;
-  display: none;
-}
 
-/* Убираем прочие “украшения” поиска (на всякий) */
-.deals-search__input::-webkit-search-decoration,
-.deals-search__input::-webkit-search-results-button,
-.deals-search__input::-webkit-search-results-decoration {
-  -webkit-appearance: none;
-  appearance: none;
-  display: none;
+/* 5) на всякий случай: чтобы ничего не “разъезжалось” на мобилке */
+@media (max-width: 560px) {
+  .header-inner {
+    gap: 10px;
+  }
 }
