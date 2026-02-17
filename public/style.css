@@ -1081,6 +1081,9 @@ body.menu-open {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.9rem;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
   transition: transform var(--transition-fast),
     background var(--transition-fast), border-color var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -1109,6 +1112,9 @@ body.menu-open {
 .subs-catalog-tabs .subs-tab--tier-extra {
   color: rgba(254, 240, 138, 0.95);
 }
+.subs-catalog-tabs .subs-tab--tier-essential {
+  color: rgba(191, 219, 254, 0.95);
+}
 .subs-catalog-tabs .subs-tab--tier-deluxe {
   color: rgba(226, 232, 240, 0.92);
 }
@@ -1116,6 +1122,12 @@ body.menu-open {
   color: rgba(254, 202, 202, 0.95);
 }
 
+.subs-catalog-tabs .subs-tab--tier-essential.subs-tab--active {
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.95), rgba(99, 102, 241, 0.95));
+  border-color: rgba(96, 165, 250, 0.65);
+  box-shadow: 0 16px 40px rgba(59, 130, 246, 0.30);
+  color: #fff;
+}
 .subs-catalog-tabs .subs-tab--tier-extra.subs-tab--active {
   background: radial-gradient(circle at top left, rgba(250, 204, 21, 0.98), rgba(161, 98, 7, 0.98));
   border-color: rgba(250, 204, 21, 0.65);
@@ -1141,15 +1153,47 @@ body.menu-open {
   background: rgba(15, 23, 42, 0.55);
 }
 
+/* iOS/Android: "hover" после тапа может залипать и перекрывать active */
+@media (hover: none) {
+  .subs-tab:hover {
+    transform: none;
+    border-color: transparent;
+    background: transparent;
+  }
+  .subs-catalog-tabs .subs-tab--tier-extra:hover,
+  .subs-catalog-tabs .subs-tab--tier-deluxe:hover,
+  .subs-catalog-tabs .subs-tab--tier-ea:hover {
+    border-color: rgba(148, 163, 184, 0.22);
+    background: transparent;
+  }
+}
+
+/* Фокус на мобилке не должен ломать визуал активной кнопки */
+.subs-tab:focus {
+  outline: none;
+}
+.subs-tab:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.6);
+  outline-offset: 2px;
+}
+
 /* PlayStation-loader (△○×□) */
+.ps-loader-wrap {
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+}
 .ps-loader {
   display: grid;
   place-items: center;
   gap: 10px;
   padding: 18px 12px;
-  min-height: 160px;
   color: rgba(226, 232, 240, 0.92);
-  width: 100%;
+  width: min(420px, 100%);
   text-align: center;
 }
 .ps-loader__symbols {
@@ -1177,10 +1221,70 @@ body.menu-open {
   display: block;
 }
 
-/* Лоадер должен строго центрироваться внутри гридов */
-.deals-grid .ps-loader,
-.subs-catalog-grid .ps-loader {
+/* Лоадер в скидках: принудительно flex и по центру */
+#deals .deals-grid:has(.ps-loader-wrap) {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  min-height: 260px;
+}
+/* Лоадер в подписках: то же */
+#subscriptions .subs-catalog-grid:has(.ps-loader-wrap) {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  min-height: 260px;
+}
+.deals-grid .ps-loader-wrap,
+.subs-catalog-grid .ps-loader-wrap {
   grid-column: 1 / -1;
+  justify-self: center;
+  width: max-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.ps-loader-wrap .ps-loader {
+  margin: 0 auto;
+}
+/* Навигация карусели: как было (без плашки), но единый стиль у стрелки/счётчика/кнопки */
+.deals-carousel__counter {
+  min-width: 72px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(2, 6, 23, 0.5);
+  color: #e5e7eb;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Единая "подсветка" для всех элементов навигации */
+.deals-carousel__nav:hover .deals-carousel__prev,
+.deals-carousel__nav:hover .deals-carousel__next,
+.deals-carousel__nav:hover .deals-carousel__counter,
+.subs-catalog-carousel__nav:hover .deals-carousel__prev,
+.subs-catalog-carousel__nav:hover .deals-carousel__next,
+.subs-catalog-carousel__nav:hover .deals-carousel__counter {
+  background: rgba(96, 165, 250, 0.2);
+}
+
+/* Внутри навигации: btn-primary не должен иметь "глоу" */
+.deals-carousel__nav .btn-primary,
+.subs-catalog-carousel__nav .btn-primary {
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+.deals-carousel__nav .btn-primary:hover,
+.subs-catalog-carousel__nav .btn-primary:hover {
+  transform: none;
+  box-shadow: none;
+  filter: none;
 }
 .ps-loader__sym--2 { animation-delay: 0.1s; }
 .ps-loader__sym--3 { animation-delay: 0.2s; }
@@ -1188,6 +1292,7 @@ body.menu-open {
 .ps-loader__text {
   font-size: 0.92rem;
   color: rgba(148, 163, 184, 0.9);
+  text-align: center;
 }
 @keyframes psPulse {
   0%, 100% { opacity: 0.45; transform: translateY(0) scale(0.98); }
@@ -1291,7 +1396,7 @@ body.menu-open {
   top: 100%;
   margin-top: 6px;
   min-width: 220px;
-  max-width: 280px;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 12px 14px;
   border-radius: 14px;
   background: rgba(15, 23, 42, 0.98);
@@ -1302,6 +1407,11 @@ body.menu-open {
   opacity: 0;
   transition: visibility 0.15s ease, opacity 0.15s ease;
   pointer-events: none;
+}
+/* Открытая плашка с координатами от JS — поверх всего, не обрезается карточкой */
+.subs-info-popover--fixed {
+  position: fixed;
+  z-index: 10002;
 }
 .subs-name-wrap:hover .subs-info-popover,
 .subs-info-popover.is-open {
@@ -1974,6 +2084,11 @@ section[id] {
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: 14px;
+}
+/* Карусель скидок в шапке занимает всю ширину строки */
+.deals-head .deals-carousel {
+  width: 100%;
+  flex-basis: 100%;
 }
 
 .deals-sort {

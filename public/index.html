@@ -258,15 +258,18 @@
             <div class="subs-catalog-choice" role="group" aria-label="Каталог игр по подпискам">
               <p class="subs-catalog-choice__label">Посмотреть каталог игр</p>
               <div class="subs-tabs subs-catalog-tabs" role="tablist" aria-label="Тип подписки">
-                <button type="button" class="subs-tab subs-tab--tier-extra subs-tab--active" id="catalogTabExtra" data-catalog="psplus_game">Экстра</button>
+                <button type="button" class="subs-tab subs-tab--tier-essential subs-tab--active" id="catalogTabEssential" data-catalog="psplus_essential">Основная</button>
+                <button type="button" class="subs-tab subs-tab--tier-extra" id="catalogTabExtra" data-catalog="psplus_game">Экстра</button>
                 <button type="button" class="subs-tab subs-tab--tier-deluxe" id="catalogTabDeluxe" data-catalog="psplus_deluxe">Делюкс</button>
                 <button type="button" class="subs-tab subs-tab--tier-ea" id="catalogTabEa" data-catalog="eaplay">EA Play</button>
               </div>
             </div>
 
             <div class="subs-catalog-panel" id="subsCatalogPanel">
-              <div class="subs-catalog-deluxe-tabs hidden" id="catalogDeluxeTabs" role="tablist" aria-label="Раздел Делюкс">
-                <button type="button" class="subs-tab subs-tab--active" data-deluxe="psplus_game">Каталог игр</button>
+              <div class="subs-catalog-deluxe-tabs hidden" id="catalogDeluxeTabs" role="tablist" aria-label="Раздел каталога">
+                <button type="button" class="subs-tab subs-tab--active" data-deluxe="psplus_monthly">Игры месяца</button>
+                <button type="button" class="subs-tab" data-deluxe="psplus_game">Каталог игр</button>
+                <button type="button" class="subs-tab" data-deluxe="psplus_ubisoft">Ubisoft+</button>
                 <button type="button" class="subs-tab" data-deluxe="psplus_classics">Каталог классики</button>
               </div>
 
@@ -292,7 +295,7 @@
               <div class="subs-card">
                 <div class="subs-card-top">
                   <div class="subs-name-wrap">
-                    <span class="subs-name">Основной</span>
+                    <span class="subs-name">Основная</span>
                     <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
                     <div class="subs-info-popover" role="tooltip">
                       <div class="subs-info-popover__title">Что входит</div>
@@ -308,9 +311,9 @@
                   <div class="subs-badge">UA</div>
                 </div>
                 <div class="subs-lines">
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основной" data-period="1 месяц" data-price="1190"><span>1 месяц</span><strong>1190₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основной" data-period="3 месяца" data-price="2190"><span>3 месяца</span><strong>2190₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основной" data-period="12 месяцев" data-price="4690"><span>12 месяцев</span><strong>4690₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="1 месяц" data-price="1190"><span>1 месяц</span><strong>1190₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="3 месяца" data-price="2190"><span>3 месяца</span><strong>2190₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="12 месяцев" data-price="4690"><span>12 месяцев</span><strong>4690₽</strong></div>
                 </div>
               </div>
 
@@ -322,7 +325,7 @@
                     <div class="subs-info-popover" role="tooltip">
                       <div class="subs-info-popover__title">Что входит</div>
                       <ul>
-                        <li>Всё из тарифа «Основной»</li>
+                        <li>Всё из тарифа «Основная»</li>
                         <li>Каталог игр (сотни игр для PS4/PS5)</li>
                         <li>Подборки и коллекции по жанрам</li>
                       </ul>

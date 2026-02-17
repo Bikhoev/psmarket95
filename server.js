@@ -553,41 +553,94 @@ async function getMonthlyGamesCached(region) {
   return { baseUrl: url, full, cached: false };
 }
 
-app.get("/api/psplus-essential", async (req, res) => {
+// ===== UBISOFT+ CLASSICS (PS Store category) =====
+app.get("/api/psplus-ubisoft", async (req, res) => {
   const region = (req.query.region || "ua").toString();
+  const pages = Math.min(parseInt(req.query.pages || "5", 10) || 5, 10);
   const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
   const limit = Math.min(
     Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
     60
   );
+  const sort = (req.query.sort || "popular").toString();
 
   if (!["ua", "tr"].includes(region))
     return res.status(400).json({ error: "region must be ua|tr" });
 
+  // Ubisoft+ Classics (same category id across locales)
+  const CATEGORY_ID = "db65f8d8-e606-49af-9a9a-23a05f55bd9a";
+
   try {
-    const { baseUrl, full, cached } = await getMonthlyGamesCached(region);
-    const slice = full.slice(offset, offset + limit);
-    // Подтягиваем обложки с store для отображаемой порции (кэш по URL)
-    const enriched = await Promise.all(
-      slice.map(async (it) => {
-        if (it.img) return it;
-        const img = await getConceptImage(it.url);
-        return { ...it, img };
-      })
-    );
+    const { baseUrl, full, cached } = await getCategoryCatalogCached({
+      region,
+      pages,
+      categoryId: CATEGORY_ID,
+      ttlMs: PSPLUS_TTL_MS,
+    });
+
+    const sorted = sortCatalogItems(full, sort);
+    const slice = sorted.slice(offset, offset + limit);
     res.json({
       region,
+      pages,
+      sort,
       baseUrl,
       cached,
-      total: full.length,
+      total: sorted.length,
       offset,
       limit,
-      items: enriched,
+      items: slice,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
+
+async function handlePsPlusMonthly(req, res) {
+  const region = (req.query.region || "ua").toString();
+  const pages = Math.min(parseInt(req.query.pages || "3", 10) || 3, 10);
+  const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
+  const limit = Math.min(
+    Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
+    60
+  );
+  const sort = (req.query.sort || "popular").toString();
+
+  if (!["ua", "tr"].includes(region))
+    return res.status(400).json({ error: "region must be ua|tr" });
+
+  // PS Plus Monthly Games (same category id across locales)
+  const CATEGORY_ID = "4c73be1e-f2f4-4aa4-b1dc-8a6d776e19fa";
+
+  try {
+    const { baseUrl, full, cached } = await getCategoryCatalogCached({
+      region,
+      pages,
+      categoryId: CATEGORY_ID,
+      ttlMs: PSPLUS_TTL_MS,
+    });
+
+    const sorted = sortCatalogItems(full, sort);
+    const slice = sorted.slice(offset, offset + limit);
+    res.json({
+      region,
+      pages,
+      sort,
+      baseUrl,
+      cached,
+      total: sorted.length,
+      offset,
+      limit,
+      items: slice,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// backward compatible name (used previously for Essential)
+app.get("/api/psplus-essential", handlePsPlusMonthly);
+app.get("/api/psplus-monthly", handlePsPlusMonthly);
 
 // ===== DETAILS CACHE =====
 const detailsCache = new Map(); // url -> { ts, data }

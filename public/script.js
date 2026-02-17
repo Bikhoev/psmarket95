@@ -138,7 +138,8 @@ document.addEventListener("DOMContentLoaded", () => {
       x: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M7 7 L17 17 M17 7 L7 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
       sq: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
     };
-    return `<div class="ps-loader" role="status" aria-live="polite" aria-label="${safe}">
+    return `<div class="ps-loader-wrap" role="status" aria-live="polite" aria-label="${safe}">
+  <div class="ps-loader">
   <div class="ps-loader__symbols" aria-hidden="true">
     <span class="ps-loader__sym ps-loader__sym--1">${svg.tri}</span>
     <span class="ps-loader__sym ps-loader__sym--2">${svg.cir}</span>
@@ -146,6 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <span class="ps-loader__sym ps-loader__sym--4">${svg.sq}</span>
   </div>
   <div class="ps-loader__text">${safe}</div>
+  </div>
 </div>`;
   }
 
@@ -588,14 +590,15 @@ ${lines.join("\n\n")}
   const catalogDeluxeTabs = document.getElementById("catalogDeluxeTabs");
 
   let psplusRegion = "ua"; // ua|tr
-  let catalogChoice = "psplus_game"; // какой тип подписки выбран: psplus_essential | psplus_game | psplus_deluxe | eaplay
-  let catalogType = "psplus_game"; // какой API грузить: psplus_essential | psplus_game | psplus_classics | eaplay
+  let catalogChoice = "psplus_essential"; // psplus_essential | psplus_game | psplus_deluxe | eaplay
+  let catalogType = "psplus_monthly"; // psplus_monthly | psplus_game | psplus_ubisoft | psplus_classics | eaplay
   const CATALOG_LIMIT = 12;
   const CATALOG_PAGES = 10; // страниц с сервера для большего охвата каталога
   const catalogOffsets = {
-    psplus_essential: 0,
+    psplus_monthly: 0,
     psplus_game: 0,
     psplus_classics: 0,
+    psplus_ubisoft: 0,
     eaplay: 0,
   };
   let catalogPages = [];
@@ -603,14 +606,23 @@ ${lines.join("\n\n")}
   let catalogTotalFromApi = 0;
   let psplusLoading = false;
 
+  const psplusCatalogNav =
+    psplusCatalogMore?.closest(".subs-catalog-carousel__nav") ||
+    psplusCatalogPrev?.closest(".subs-catalog-carousel__nav") ||
+    null;
+
   const CATALOGS = {
-    psplus_essential: {
-      endpoint: "/api/psplus-essential",
-      note: "Основной: игры месяца PS Plus.",
+    psplus_monthly: {
+      endpoint: "/api/psplus-monthly",
+      note: "Игры месяца PlayStation Plus. Состав может отличаться по регионам.",
     },
     psplus_game: {
       endpoint: "/api/psplus-catalog",
-      note: "Экстра: каталог игр PS Plus (Game Catalog). Состав может отличаться по регионам.",
+      note: "Каталог игр PS Plus (Game Catalog). Состав может отличаться по регионам.",
+    },
+    psplus_ubisoft: {
+      endpoint: "/api/psplus-ubisoft",
+      note: "Ubisoft+ Classics в PlayStation Plus. Состав может отличаться по регионам.",
     },
     psplus_classics: {
       endpoint: "/api/psplus-classics",
@@ -622,17 +634,30 @@ ${lines.join("\n\n")}
     },
   };
 
+  const SECTION_KEYS = {
+    psplus_essential: ["psplus_monthly"],
+    psplus_game: ["psplus_monthly", "psplus_game", "psplus_ubisoft"],
+    psplus_deluxe: ["psplus_monthly", "psplus_game", "psplus_ubisoft", "psplus_classics"],
+  };
+
   function setCatalogChoice(choice) {
-    catalogChoice = choice || "psplus_game";
+    catalogChoice = choice || "psplus_essential";
     const tabs = [catalogTabEssential, catalogTabExtra, catalogTabDeluxe, catalogTabEa].filter(Boolean);
     tabs.forEach((btn) => btn?.classList.toggle("subs-tab--active", btn?.dataset?.catalog === catalogChoice));
 
-    if (catalogDeluxeTabs) catalogDeluxeTabs.classList.toggle("hidden", catalogChoice !== "psplus_deluxe");
+    const showSections = ["psplus_essential", "psplus_game", "psplus_deluxe"].includes(catalogChoice);
+    if (catalogDeluxeTabs) catalogDeluxeTabs.classList.toggle("hidden", !showSections);
 
-    if (catalogChoice === "psplus_deluxe") {
-      catalogType = "psplus_game"; // по умолчанию показываем каталог игр Делюкс
-      const deluxeBtns = catalogDeluxeTabs?.querySelectorAll("[data-deluxe]");
-      deluxeBtns?.forEach((b) => b.classList.toggle("subs-tab--active", b.dataset.deluxe === catalogType));
+    if (showSections) {
+      // по умолчанию показываем «Игры месяца»
+      catalogType = "psplus_monthly";
+      const sectionBtns = Array.from(catalogDeluxeTabs?.querySelectorAll("[data-deluxe]") || []);
+      const allowed = new Set(SECTION_KEYS[catalogChoice] || []);
+      sectionBtns.forEach((b) => {
+        const key = b.dataset.deluxe;
+        b.classList.toggle("hidden", !allowed.has(key));
+        b.classList.toggle("subs-tab--active", key === catalogType);
+      });
     } else {
       catalogType = catalogChoice;
     }
@@ -712,6 +737,7 @@ ${lines.join("\n\n")}
     psplusLoading = true;
 
     if (reset) {
+      if (psplusCatalogNav) psplusCatalogNav.style.display = "none";
       catalogOffsets[catalogType] = 0;
       catalogPages = [psLoaderHtml("Загружаем каталог…")];
       catalogCurrentPage = 0;
@@ -771,6 +797,9 @@ ${lines.join("\n\n")}
         }
       }
 
+      // Показать навигацию после появления первой страницы
+      if (reset && psplusCatalogNav) psplusCatalogNav.style.display = "";
+
       if (psplusCatalogLink) {
         const baseUrl = String(data.baseUrl || "").trim();
         if (baseUrl) {
@@ -788,6 +817,7 @@ ${lines.join("\n\n")}
         psplusCatalogGrid.innerHTML = errHtml;
       }
       if (psplusCatalogMore) psplusCatalogMore.style.display = "none";
+      if (reset && psplusCatalogNav) psplusCatalogNav.style.display = "";
     } finally {
       psplusLoading = false;
     }
@@ -807,10 +837,13 @@ ${lines.join("\n\n")}
     btn.addEventListener("click", handleCatalogChoiceClick);
   });
 
-  // Под-вкладки Делюкс: Каталог игр | Каталог классики
+  // Под-вкладки разделов: Каталог игр | Ubisoft+ | (для Делюкс) Каталог классики
   catalogDeluxeTabs?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-deluxe]");
-    if (!btn || catalogChoice !== "psplus_deluxe") return;
+    if (!btn) return;
+    const key = btn.dataset.deluxe;
+    const allowed = new Set(SECTION_KEYS[catalogChoice] || []);
+    if (!allowed.has(key)) return;
     catalogType = btn.dataset.deluxe;
     catalogDeluxeTabs.querySelectorAll("[data-deluxe]").forEach((b) => b.classList.toggle("subs-tab--active", b === btn));
     if (psplusCatalogNote) psplusCatalogNote.textContent = CATALOGS[catalogType]?.note ?? "";
@@ -844,7 +877,7 @@ ${lines.join("\n\n")}
   // вкладки каталога (Экстра / Делюкс / EA Play)
   // Первая загрузка каталога (Экстра по умолчанию)
   if (subsCatalogPanel) {
-    setCatalogChoice("psplus_game");
+    setCatalogChoice("psplus_essential");
     loadPsplusCatalog({ reset: true });
   }
 
@@ -931,6 +964,7 @@ ${lines.join("\n\n")}
     }
   }
 
+  let lastSubsPopoverOpenAt = 0;
   if (subsPricing) {
     subsPricing.addEventListener("click", (e) => {
       const line = e.target.closest(".subs-line");
@@ -952,6 +986,7 @@ ${lines.join("\n\n")}
       const btn = e.target.closest(".subs-info-btn");
       if (!btn) return;
       e.preventDefault();
+      e.stopPropagation();
       const wrap = btn.closest(".subs-name-wrap");
       const popover = wrap?.querySelector(".subs-info-popover");
       if (!popover) return;
@@ -959,13 +994,36 @@ ${lines.join("\n\n")}
       document.querySelectorAll(".subs-info-popover.is-open").forEach((p) => {
         if (p !== popover) p.classList.remove("is-open");
       });
+      if (isOpen) {
+        lastSubsPopoverOpenAt = Date.now();
+        // Позиционируем плашку в viewport (fixed), чтобы не обрезало overflow карточки
+        const rect = btn.getBoundingClientRect();
+        const vh = window.innerHeight;
+        const popoverHeight = 180;
+        const gap = 6;
+        let top = rect.bottom + gap;
+        if (top + popoverHeight > vh - 12) top = rect.top - popoverHeight - gap;
+        const left = Math.max(12, Math.min(rect.left, window.innerWidth - 300));
+        popover.classList.add("subs-info-popover--fixed");
+        popover.style.left = `${left}px`;
+        popover.style.top = `${Math.max(12, top)}px`;
+      } else {
+        popover.classList.remove("subs-info-popover--fixed");
+        popover.style.left = "";
+        popover.style.top = "";
+      }
     });
   }
 
-  // Закрытие плашки «Что входит» по клику вне
+  // Закрытие плашки «Что входит» по клику вне (на мобильных не закрывать в тот же момент, что и открытие)
   document.addEventListener("click", (e) => {
     if (e.target.closest(".subs-info-btn") || e.target.closest(".subs-info-popover")) return;
-    document.querySelectorAll(".subs-info-popover.is-open").forEach((p) => p.classList.remove("is-open"));
+    if (Date.now() - lastSubsPopoverOpenAt < 250) return;
+    document.querySelectorAll(".subs-info-popover.is-open").forEach((p) => {
+      p.classList.remove("is-open", "subs-info-popover--fixed");
+      p.style.left = "";
+      p.style.top = "";
+    });
   });
 
   function showSubsRegion(regionKey) {
@@ -983,6 +1041,9 @@ ${lines.join("\n\n")}
     // каталог PS Plus тоже зависит от региона
     psplusRegion = regionKey;
     if (subsCatalogPanel && !subsCatalogPanel.hidden) loadPsplusCatalog({ reset: true });
+
+    // подпись вкладки Essential зависит от региона
+    if (catalogTabEssential) catalogTabEssential.textContent = regionKey === "tr" ? "Essential" : "Основная";
   }
 
   // вкладки региона подписок
@@ -1158,6 +1219,10 @@ ${lines.join("\n\n")}
   const dealsCarouselTrack = document.getElementById("dealsCarouselTrack");
   const dealsCarouselCounter = document.getElementById("dealsCarouselCounter");
   const dealsCarouselPrev = document.getElementById("dealsCarouselPrev");
+  const dealsCarouselNav =
+    dealsMoreBtn?.closest(".deals-carousel__nav") ||
+    dealsCarouselPrev?.closest(".deals-carousel__nav") ||
+    null;
 
   let dealsRegion = "ua"; // ua | tr
   let dealsSort = "popular"; // popular | discount | new
@@ -1965,6 +2030,7 @@ ${lines.join("\n\n")}
     }
 
     if (reset) {
+      if (dealsCarouselNav) dealsCarouselNav.style.display = "none";
       dealsOffset = 0;
       dealsPages = [psLoaderHtml("Загружаем скидки…")];
       dealsCurrentPage = 0;
@@ -2001,6 +2067,7 @@ ${lines.join("\n\n")}
       else dealsGrid.insertAdjacentHTML("beforeend", cardsHtml);
       if (dealsMoreBtn) dealsMoreBtn.style.display = dealsOffset >= dealsTotalFromApi ? "none" : "inline-block";
     }
+    if (reset && dealsCarouselNav) dealsCarouselNav.style.display = "";
     syncDealsControls();
   }
 
