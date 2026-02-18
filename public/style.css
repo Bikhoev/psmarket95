@@ -1089,10 +1089,12 @@ body.menu-open {
     box-shadow var(--transition-fast);
 }
 
-.subs-tab:hover {
-  transform: translateY(-1px);
-  border-color: rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.55);
+@media (hover: hover) {
+  .subs-tab:hover {
+    transform: translateY(-1px);
+    border-color: rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.55);
+  }
 }
 
 .subs-tab--active {
@@ -1105,73 +1107,69 @@ body.menu-open {
   box-shadow: 0 16px 40px rgba(59, 130, 246, 0.55);
 }
 
-/* Каталог подписок: фирменные цвета вкладок (как в PS Store) */
+/* Каталог подписок: фирменные цвета вкладок */
 .subs-catalog-tabs .subs-tab {
   border-color: rgba(148, 163, 184, 0.22);
 }
-.subs-catalog-tabs .subs-tab--tier-extra {
-  color: rgba(254, 240, 138, 0.95);
-}
+/* Essential/Основная — бело-серебристый */
 .subs-catalog-tabs .subs-tab--tier-essential {
-  color: rgba(191, 219, 254, 0.95);
+  color: rgba(210, 215, 225, 0.95);
 }
+/* Extra/Экстра — золотой */
+.subs-catalog-tabs .subs-tab--tier-extra {
+  color: rgba(251, 191, 36, 0.95);
+}
+/* Deluxe/Люкс — тёмный графитовый */
 .subs-catalog-tabs .subs-tab--tier-deluxe {
-  color: rgba(226, 232, 240, 0.92);
+  color: rgba(148, 163, 184, 0.95);
 }
+/* EA Play — насыщенный багрово-красный */
 .subs-catalog-tabs .subs-tab--tier-ea {
-  color: rgba(254, 202, 202, 0.95);
+  color: rgba(248, 113, 113, 0.98);
 }
 
 .subs-catalog-tabs .subs-tab--tier-essential.subs-tab--active {
-  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.95), rgba(99, 102, 241, 0.95));
-  border-color: rgba(96, 165, 250, 0.65);
-  box-shadow: 0 16px 40px rgba(59, 130, 246, 0.30);
-  color: #fff;
+  background: linear-gradient(135deg, rgba(230, 232, 238, 0.98), rgba(188, 194, 206, 0.98));
+  border-color: rgba(203, 213, 225, 0.7);
+  box-shadow: 0 16px 40px rgba(148, 163, 184, 0.35);
+  color: #1e293b;
 }
 .subs-catalog-tabs .subs-tab--tier-extra.subs-tab--active {
-  background: radial-gradient(circle at top left, rgba(250, 204, 21, 0.98), rgba(161, 98, 7, 0.98));
-  border-color: rgba(250, 204, 21, 0.65);
-  box-shadow: 0 16px 40px rgba(250, 204, 21, 0.30);
-  color: #111827;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.98), rgba(180, 83, 9, 0.95));
+  border-color: rgba(251, 191, 36, 0.75);
+  box-shadow: 0 16px 40px rgba(245, 158, 11, 0.4);
+  color: #1c1917;
 }
 .subs-catalog-tabs .subs-tab--tier-deluxe.subs-tab--active {
-  background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98));
-  border-color: rgba(148, 163, 184, 0.35);
-  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.75);
-  color: #fff;
+  background: linear-gradient(135deg, rgba(51, 65, 85, 0.98), rgba(30, 41, 59, 0.98));
+  border-color: rgba(71, 85, 105, 0.6);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.8);
+  color: #f1f5f9;
 }
 .subs-catalog-tabs .subs-tab--tier-ea.subs-tab--active {
-  background: radial-gradient(circle at top left, rgba(239, 68, 68, 0.98), rgba(127, 29, 29, 0.98));
-  border-color: rgba(248, 113, 113, 0.65);
-  box-shadow: 0 16px 40px rgba(239, 68, 68, 0.32);
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.98), rgba(127, 29, 29, 0.98));
+  border-color: rgba(220, 38, 38, 0.7);
+  box-shadow: 0 16px 40px rgba(185, 28, 28, 0.45);
   color: #fff;
 }
-.subs-catalog-tabs .subs-tab--tier-extra:hover,
-.subs-catalog-tabs .subs-tab--tier-deluxe:hover,
-.subs-catalog-tabs .subs-tab--tier-ea:hover {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(15, 23, 42, 0.55);
+@media (hover: hover) {
+  .subs-catalog-tabs .subs-tab--tier-extra:hover,
+  .subs-catalog-tabs .subs-tab--tier-deluxe:hover,
+  .subs-catalog-tabs .subs-tab--tier-ea:hover,
+  .subs-catalog-tabs .subs-tab--tier-essential:hover {
+    border-color: rgba(148, 163, 184, 0.45);
+    background: rgba(15, 23, 42, 0.55);
+  }
 }
 
-/* iOS/Android: "hover" после тапа может залипать и перекрывать active */
+/* Touch: :active для тактильной отдачи, без hover (устранение залипания) */
 @media (hover: none) {
-  .subs-tab:hover {
-    transform: none;
-    border-color: transparent;
-    background: transparent;
-  }
   .subs-tab:active {
     transform: none;
   }
   .subs-tab:not(.subs-tab--active):active {
     border-color: rgba(148, 163, 184, 0.32);
     background: rgba(255, 255, 255, 0.06);
-  }
-  .subs-catalog-tabs .subs-tab--tier-extra:hover,
-  .subs-catalog-tabs .subs-tab--tier-deluxe:hover,
-  .subs-catalog-tabs .subs-tab--tier-ea:hover {
-    border-color: rgba(148, 163, 184, 0.22);
-    background: transparent;
   }
 }
 
@@ -3600,11 +3598,25 @@ body {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* базово: никакой трансформации/фильтров от hover на touch */
+  /* Убираем hover у ВСЕХ кнопок и интерактивных элементов */
   a:hover,
-  button:hover {
-    transform: none;
-    filter: none;
+  button:hover,
+  [role="button"]:hover {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  /* subs-tab: явный сброс — region tabs (Европа/Турция) + catalog tabs (Основная/Экстра/Люкс/EA) */
+  .subs-tab:hover {
+    transform: none !important;
+  }
+  .subs-tab:not(.subs-tab--active):hover {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+  .subs-catalog-tabs .subs-tab:not(.subs-tab--active):hover {
+    border-color: rgba(148, 163, 184, 0.22) !important;
   }
 
   /* Навигация */
