@@ -23,6 +23,26 @@ const CACHE_TTL_MS = 1000 * 60 * 20; // 20 минут
 const psplusCache = new Map(); // key -> { ts, data }
 const PSPLUS_TTL_MS = 1000 * 60 * 60 * 6; // 6 часов
 
+// ===== PAGE-LEVEL CACHE (ускорение: кэшируем разбор каждой страницы отдельно) =====
+const psplusPageCache = new Map(); // key -> { ts, data } where data = items[]
+const dealsPageCache = new Map(); // key -> { ts, data } where data = items[]
+
+async function mapWithConcurrency(list, concurrency, fn) {
+  const arr = Array.from(list);
+  const results = new Array(arr.length);
+  let idx = 0;
+
+  const workers = new Array(Math.max(1, concurrency)).fill(0).map(async () => {
+    while (idx < arr.length) {
+      const my = idx++;
+      results[my] = await fn(arr[my], my);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
+
 // ===== ТВОИ ПРАВИЛА =====
 const MIN_GAME_PRICE_RUB = 390;
 
@@ -160,12 +180,19 @@ async function getCategoryCatalogCached({ region, pages, categoryId, ttlMs }) {
     full = cachedRow.data;
     cached = true;
   } else {
-    let all = [];
-    for (let p = 1; p <= pages; p++) {
+    const pageNums = Array.from({ length: pages }, (_, i) => i + 1);
+    const pageItems = await mapWithConcurrency(pageNums, 4, async (p) => {
+      const pageKey = `${region}:${categoryId}:${p}`;
+      const cachedPage = psplusPageCache.get(pageKey);
+      if (cachedPage && Date.now() - cachedPage.ts < ttlMs) return cachedPage.data;
+
       const html = await fetchHtml(`${baseUrl}/${p}`);
       const $ = cheerio.load(html);
-      all = all.concat(parsePsPlusCatalogList($));
-    }
+      const items = parsePsPlusCatalogList($);
+      psplusPageCache.set(pageKey, { ts: Date.now(), data: items });
+      return items;
+    });
+    const all = pageItems.flat();
 
     // uniq
     const seen = new Set();
@@ -276,11 +303,19 @@ async function getDealsFull(regionKey, pages = 10) {
 
   if (categoryUrl) {
     const base = categoryUrl.replace(/\/1$/, "");
-    for (let p = 1; p <= pages; p++) {
+    const pageNums = Array.from({ length: pages }, (_, i) => i + 1);
+    const pageItems = await mapWithConcurrency(pageNums, 4, async (p) => {
+      const pageKey = `${regionKey}:${base}:${p}`;
+      const cachedPage = dealsPageCache.get(pageKey);
+      if (cachedPage && Date.now() - cachedPage.ts < CACHE_TTL_MS) return cachedPage.data;
+
       const html = await fetchHtml(`${base}/${p}`);
       const $ = cheerio.load(html);
-      all = all.concat(parseDealsList($, regionKey));
-    }
+      const items = parseDealsList($, regionKey);
+      dealsPageCache.set(pageKey, { ts: Date.now(), data: items });
+      return items;
+    });
+    all = all.concat(pageItems.flat());
   }
 
   // uniq

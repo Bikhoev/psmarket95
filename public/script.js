@@ -606,6 +606,14 @@ ${lines.join("\n\n")}
   let catalogTotalFromApi = 0;
   let psplusLoading = false;
 
+  // Prefetch следующей страницы каталога
+  // key = `${region}|${catalogType}|${offset}`
+  const catalogPrefetchCache = new Map();
+
+  function catalogPrefetchKey(type, offset) {
+    return `${psplusRegion}|${type}|${offset}`;
+  }
+
   const psplusCatalogNav =
     psplusCatalogMore?.closest(".subs-catalog-carousel__nav") ||
     psplusCatalogPrev?.closest(".subs-catalog-carousel__nav") ||
@@ -739,6 +747,7 @@ ${lines.join("\n\n")}
     if (reset) {
       if (psplusCatalogNav) psplusCatalogNav.style.display = "none";
       catalogOffsets[catalogType] = 0;
+      catalogPrefetchCache.clear();
       catalogPages = [psLoaderHtml("Загружаем каталог…")];
       catalogCurrentPage = 0;
       if (psplusCatalogCarouselTrack) renderCatalogCarousel();
@@ -808,6 +817,35 @@ ${lines.join("\n\n")}
           psplusCatalogLink.href = isPlaystationCom ? baseUrl : `${baseUrl}/1`;
         }
       }
+
+      // Prefetch следующей страницы текущего типа каталога
+      const nextOffset = catalogOffsets[catalogType] || 0;
+      const hasMore = nextOffset < catalogTotalFromApi;
+      const pKey = catalogPrefetchKey(catalogType, nextOffset);
+      if (hasMore && !catalogPrefetchCache.has(pKey)) {
+        const endpoint = CATALOGS[catalogType]?.endpoint || "/api/psplus-catalog";
+        const urlNext = new URL(endpoint, window.location.origin);
+        urlNext.searchParams.set("region", psplusRegion);
+        urlNext.searchParams.set("pages", String(CATALOG_PAGES));
+        urlNext.searchParams.set("sort", "popular");
+        urlNext.searchParams.set("offset", String(nextOffset));
+        urlNext.searchParams.set("limit", String(CATALOG_LIMIT));
+
+        const promise = fetch(urlNext.toString(), { headers: { Accept: "application/json" } })
+          .then((r) => r.json())
+          .then((d) => {
+            if (!d.items) throw new Error(d.error || "Не удалось загрузить.");
+            const items = Array.isArray(d.items) ? d.items : [];
+            return {
+              total: Number(d.total || 0),
+              itemsLen: items.length,
+              html: buildCatalogPageHtml(items),
+            };
+          })
+          .catch(() => null);
+
+        catalogPrefetchCache.set(pKey, { promise });
+      }
     } catch (e) {
       const errHtml = `<div class='deal-meta'>Не удалось загрузить каталог: ${e.message}</div>`;
       if (psplusCatalogCarouselTrack) {
@@ -865,12 +903,35 @@ ${lines.join("\n\n")}
     goToCatalogPage(catalogCurrentPage - 1);
   });
 
-  psplusCatalogMore?.addEventListener("click", () => {
+  psplusCatalogMore?.addEventListener("click", async () => {
     // Если следующая страница уже загружена — просто перелистываем
     if (catalogPages.length > 0 && catalogCurrentPage < catalogPages.length - 1) {
       goToCatalogPage(catalogCurrentPage + 1);
       return;
     }
+
+    // Если следующая страница префетчена — применяем мгновенно
+    const off = catalogOffsets[catalogType] || 0;
+    const key = catalogPrefetchKey(catalogType, off);
+    const pref = catalogPrefetchCache.get(key);
+    if (pref?.promise) {
+      try {
+        const ready = await pref.promise;
+        catalogPrefetchCache.delete(key);
+        if (ready && ready.itemsLen > 0) {
+          catalogTotalFromApi = Number(ready.total || catalogTotalFromApi || 0);
+          catalogPages.push(ready.html);
+          catalogCurrentPage = catalogPages.length - 1;
+          catalogOffsets[catalogType] = (catalogOffsets[catalogType] || 0) + ready.itemsLen;
+          renderCatalogCarousel();
+          scrollToSubscriptionsSection();
+          return;
+        }
+      } catch {
+        catalogPrefetchCache.delete(key);
+      }
+    }
+
     loadPsplusCatalog({ reset: false }).then(() => scrollToSubscriptionsSection());
   });
 
@@ -1086,6 +1147,10 @@ ${lines.join("\n\n")}
 
     // подпись вкладки Essential зависит от региона
     if (catalogTabEssential) catalogTabEssential.textContent = regionKey === "tr" ? "Essential" : "Основная";
+
+    // подписи вкладок Extra/Deluxe: Extra зависит от региона, Deluxe тоже
+    if (catalogTabExtra) catalogTabExtra.textContent = regionKey === "tr" ? "Extra" : "Экстра";
+    if (catalogTabDeluxe) catalogTabDeluxe.textContent = regionKey === "tr" ? "Deluxe" : "Люкс";
   }
 
   // вкладки региона подписок
@@ -1284,6 +1349,22 @@ ${lines.join("\n\n")}
   // Полный список скидок (кэш)
   // ключ = `${region}|${sort}` -> массив всех items
   const dealsFullCache = new Map();
+
+  // Prefetch следующей страницы (ускорение клика «Показать ещё»)
+  // key = `${region}|${sort}|${offset}`
+  const dealsPrefetchCache = new Map();
+
+  function dealsPrefetchKey(offset) {
+    return `${dealsRegion}|${dealsSort}|${offset}`;
+  }
+
+  function prunePrefetchCache(map, maxSize = 6) {
+    while (map.size > maxSize) {
+      const firstKey = map.keys().next().value;
+      if (firstKey == null) break;
+      map.delete(firstKey);
+    }
+  }
 
   // ====== HEADER FAVORITES BUTTON (рядом с корзиной) ======
   function ensureFavHeaderButton() {
@@ -2074,6 +2155,7 @@ ${lines.join("\n\n")}
     if (reset) {
       if (dealsCarouselNav) dealsCarouselNav.style.display = "none";
       dealsOffset = 0;
+      dealsPrefetchCache.clear();
       dealsPages = [psLoaderHtml("Загружаем скидки…")];
       dealsCurrentPage = 0;
       if (dealsCarouselTrack) {
@@ -2111,6 +2193,30 @@ ${lines.join("\n\n")}
     }
     if (reset && dealsCarouselNav) dealsCarouselNav.style.display = "";
     syncDealsControls();
+
+    // Тихо префетчим следующую страницу (если есть)
+    if (!favoritesViewActive && !(dealsSearchActive && dealsSearchQuery && dealsSearchQuery.trim())) {
+      const nextOffset = dealsOffset;
+      const hasMore = nextOffset < dealsTotalFromApi;
+      const key = dealsPrefetchKey(nextOffset);
+      if (hasMore && !dealsPrefetchCache.has(key)) {
+        const apiNext = `/api/deals?region=${dealsRegion}&pages=10&sort=${dealsSort}&offset=${nextOffset}&limit=${DEALS_LIMIT}`;
+        const promise = fetch(apiNext)
+          .then((r) => r.json())
+          .then((d) => {
+            if (!d.items) throw new Error(d.error || "Не удалось загрузить.");
+            return {
+              total: Number(d.total || 0),
+              itemsLen: Array.isArray(d.items) ? d.items.length : 0,
+              html: buildDealsCardsHtml(d.items),
+            };
+          })
+          .catch(() => null);
+
+        dealsPrefetchCache.set(key, { promise });
+        prunePrefetchCache(dealsPrefetchCache, 6);
+      }
+    }
   }
 
   function setDealsTabs(active) {
@@ -2171,12 +2277,35 @@ ${lines.join("\n\n")}
   });
 
   if (dealsMoreBtn) {
-    dealsMoreBtn.addEventListener("click", () => {
+    dealsMoreBtn.addEventListener("click", async () => {
       // Если следующая страница уже загружена — просто перелистываем
       if (dealsPages.length > 0 && dealsCurrentPage < dealsPages.length - 1) {
         goToDealsPage(dealsCurrentPage + 1);
         return;
       }
+
+      // Если страница уже префетчена — используем её без ожидания сети в момент клика
+      const key = dealsPrefetchKey(dealsOffset);
+      const pref = dealsPrefetchCache.get(key);
+      if (pref?.promise) {
+        try {
+          const ready = await pref.promise;
+          dealsPrefetchCache.delete(key);
+          if (ready && ready.itemsLen > 0) {
+            dealsTotalFromApi = Number(ready.total || dealsTotalFromApi || 0);
+            dealsPages.push(ready.html);
+            dealsCurrentPage = dealsPages.length - 1;
+            dealsOffset += ready.itemsLen;
+            renderDealsCarousel();
+            syncDealsControls();
+            scrollToDealsSection();
+            return;
+          }
+        } catch {
+          dealsPrefetchCache.delete(key);
+        }
+      }
+
       fetchDealsPage({ reset: false })
         .then(() => scrollToDealsSection())
         .catch((e) => {
@@ -2184,7 +2313,10 @@ ${lines.join("\n\n")}
             dealsPages = [`<div class='deal-meta'>Ошибка: ${e.message}</div>`];
             renderDealsCarousel();
           } else if (dealsGrid) {
-            dealsGrid.insertAdjacentHTML("beforeend", `<div class='deal-meta'>Ошибка: ${e.message}</div>`);
+            dealsGrid.insertAdjacentHTML(
+              "beforeend",
+              `<div class='deal-meta'>Ошибка: ${e.message}</div>`
+            );
           }
         });
     });

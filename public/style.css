@@ -1266,16 +1266,14 @@ body.menu-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  cursor: default;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
-/* Единая "подсветка" для всех элементов навигации */
-.deals-carousel__nav:hover .deals-carousel__prev,
-.deals-carousel__nav:hover .deals-carousel__next,
-.deals-carousel__nav:hover .deals-carousel__counter,
-.subs-catalog-carousel__nav:hover .deals-carousel__prev,
-.subs-catalog-carousel__nav:hover .deals-carousel__next,
-.subs-catalog-carousel__nav:hover .deals-carousel__counter {
+/* Подсветка ТОЛЬКО у того элемента, на который навели */
+.deals-carousel__counter:hover {
   background: rgba(96, 165, 250, 0.2);
+  transform: translateY(-1px);
 }
 
 /* Внутри навигации: btn-primary не должен иметь "глоу" */
@@ -1284,12 +1282,10 @@ body.menu-open {
   background: rgba(2, 6, 23, 0.5);
   border: 1px solid rgba(148, 163, 184, 0.3);
   box-shadow: none;
-  transform: none;
   filter: none;
 }
 .deals-carousel__nav .btn-primary:hover,
 .subs-catalog-carousel__nav .btn-primary:hover {
-  transform: none;
   box-shadow: none;
   filter: none;
 }
@@ -1523,7 +1519,7 @@ body.menu-open {
 }
 
 .subs-note {
-  margin: 14px 0 0;
+  margin: 8px 0 0;
   color: var(--text-soft);
   font-size: 0.8rem;
 }
@@ -2166,7 +2162,7 @@ section[id] {
 /* Карусель скидок: страницы влево-вправо */
 .deals-carousel {
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   touch-action: pan-y;
   overscroll-behavior-x: none;
 }
@@ -2207,6 +2203,7 @@ section[id] {
 .deals-carousel__prev:hover:not(:disabled),
 .deals-carousel__next:hover:not(:disabled) {
   background: rgba(96, 165, 250, 0.2);
+  transform: translateY(-1px);
 }
 .deals-carousel__prev:disabled,
 .deals-carousel__next:disabled {
@@ -2214,9 +2211,23 @@ section[id] {
   cursor: not-allowed;
 }
 .deals-carousel__counter {
-  font-weight: 600;
-  color: var(--text-muted);
-  min-width: 3ch;
+  min-width: 72px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(2, 6, 23, 0.5);
+  color: #e5e7eb;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.deals-carousel__counter:hover {
+  background: rgba(96, 165, 250, 0.2);
+  transform: translateY(-1px);
 }
 
 .deals-footer {
@@ -3578,4 +3589,159 @@ body {
   .deals-fav-close {
     font-size: 16px;
   }
+}
+
+/* =========================================================
+   Touch devices: отключаем "залипающий hover" после тапа
+   (iOS/Android могут держать :hover до следующего тапа)
+========================================================= */
+@media (hover: none) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* базово: никакой трансформации/фильтров от hover на touch */
+  a:hover,
+  button:hover {
+    transform: none;
+    filter: none;
+  }
+
+  /* Навигация */
+  .nav a:hover {
+    transform: none;
+    background: radial-gradient(
+      circle at top left,
+      rgba(15, 23, 42, 0.9),
+      rgba(15, 23, 42, 0.6)
+    );
+    border-color: rgba(148, 163, 184, 0.18);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.85);
+  }
+  .nav a:hover::after {
+    opacity: 0;
+  }
+
+  .burger:hover {
+    border-color: rgba(148, 163, 184, 0.4);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.9);
+    transform: none;
+  }
+
+  /* Primary buttons */
+  .btn-primary:hover {
+    transform: none;
+    box-shadow: 0 14px 38px rgba(59, 130, 246, 0.65);
+    filter: none;
+  }
+
+  /* Cards (главная) */
+  .card:hover {
+    transform: none;
+    box-shadow: var(--shadow-soft);
+    border-color: rgba(148, 163, 184, 0.25);
+  }
+  .card:hover::before {
+    opacity: 0;
+  }
+
+  /* Form controls */
+  select:hover {
+    border-color: rgba(148, 163, 184, 0.32);
+    box-shadow: none;
+  }
+
+  /* Subscription cards + info button */
+  .subs-card:hover {
+    transform: none;
+    border-color: rgba(148, 163, 184, 0.22);
+    box-shadow: 0 16px 44px rgba(15, 23, 42, 0.9);
+  }
+  .subs-card:hover::before {
+    opacity: 0;
+  }
+  .subs-info-btn:hover {
+    background: rgba(2, 6, 23, 0.5);
+    color: var(--text-muted);
+    border-color: rgba(148, 163, 184, 0.45);
+  }
+
+  /* Deals + Catalog nav buttons/counters */
+  .deals-carousel__prev:hover:not(:disabled),
+  .deals-carousel__next:hover:not(:disabled),
+  .subs-catalog-carousel__prev:hover:not(:disabled),
+  .subs-catalog-carousel__next:hover:not(:disabled),
+  .deals-carousel__counter:hover {
+    background: rgba(2, 6, 23, 0.5);
+    transform: none;
+  }
+
+  /* Catalog link */
+  .subs-catalog-store-link:hover {
+    color: rgba(96, 165, 250, 0.95);
+  }
+
+  /* PS Plus items */
+  .psplus-card:hover {
+    transform: none;
+    border-color: rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.7);
+  }
+
+  /* Subscription lines */
+  .subs-line:hover {
+    background: rgba(2, 6, 23, 0.45);
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  /* Cart / header buttons */
+  .cart-btn:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .cart-icon-btn:hover,
+  .header-fav-btn:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+  .cart-float-btn:hover {
+    transform: none;
+    background: rgba(15, 23, 42, 0.92);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+    animation-play-state: running;
+  }
+
+  /* Deal card + deal buttons */
+  .deal-cart:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .deal-buy:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .deal-buy.deal-buy--in-cart:hover {
+    transform: none;
+    background: rgba(34, 197, 94, 0.16);
+  }
+  .deal-card:hover {
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .deal-card:hover .deal-media {
+    filter: none;
+  }
+}
+
+/* Общий фокус: показываем только для клавиатуры */
+button:focus,
+a:focus {
+  outline: none;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.6);
+  outline-offset: 2px;
 }
