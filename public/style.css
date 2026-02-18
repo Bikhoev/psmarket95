@@ -1878,27 +1878,17 @@ html {
 /* Кликабельность строк прайса */
 .subs-line {
   cursor: pointer;
-  touch-action: manipulation; /* убирает 300ms задержку клика на мобилке */
   transition: transform var(--transition-fast),
     border-color var(--transition-fast), box-shadow var(--transition-fast),
     background var(--transition-fast);
 }
 
-.subs-line:hover {
-  transform: translateY(-1px);
-  border-color: rgba(96, 165, 250, 0.55);
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.9);
-}
-
-/* :active = сразу как "в корзине" (мгновенная обратная связь при тапе) */
-.subs-line:active {
-  border-color: rgba(50, 132, 123, 0.85);
-  background: rgba(24, 44, 49, 0.95);
-  box-shadow: 0 4px 12px rgba(50, 132, 123, 0.25);
-  color: rgba(255, 255, 255, 0.98);
-}
-.subs-line:active strong {
-  color: #fff;
+@media (hover: hover) {
+  .subs-line:hover {
+    transform: translateY(-1px);
+    border-color: rgba(96, 165, 250, 0.55);
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.9);
+  }
 }
 
 /* Выбранная строка */
@@ -1908,7 +1898,7 @@ html {
   box-shadow: 0 18px 44px rgba(59, 130, 246, 0.35);
 }
 
-/* Добавлено в корзину (как на скрине: тёмный бирюзовый фон, зелёная рамка) */
+/* Добавлено в корзину */
 .subs-line.subs-line--in-cart {
   border-color: rgba(50, 132, 123, 0.9);
   background: rgba(24, 44, 49, 0.95);
@@ -3715,14 +3705,12 @@ body {
     background: rgba(15, 23, 42, 0.7);
   }
 
-  /* Subscription lines: hover не должен перекрывать :active при тапе */
+  /* Subscription lines: без hover на touch (устранение залипания) */
   .subs-line:hover {
+    transform: none;
     background: rgba(2, 6, 23, 0.45);
     border-color: rgba(148, 163, 184, 0.18);
-  }
-  .subs-line:active {
-    border-color: rgba(50, 132, 123, 0.85);
-    background: rgba(24, 44, 49, 0.95);
+    box-shadow: none;
   }
 
   /* Cart / header buttons */
