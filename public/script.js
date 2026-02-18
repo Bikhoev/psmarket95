@@ -964,7 +964,6 @@ ${lines.join("\n\n")}
     }
   }
 
-  let lastSubsPopoverOpenAt = 0;
   if (subsPricing) {
     subsPricing.addEventListener("click", (e) => {
       const line = e.target.closest(".subs-line");
@@ -981,50 +980,93 @@ ${lines.join("\n\n")}
       }
     });
 
-    // Кнопка «i» (что входит): клик переключает плашку; на мобильных только клик
+    // Кнопка «i» (что входит): используем один глобальный поповер, чтобы его не обрезал overflow карточки
+    let subsInfoOverlay = document.getElementById("subsInfoOverlay");
+    let subsInfoOverlayLastOpenAt = 0;
+    let subsInfoOverlayAnchorBtn = null;
+
+    function ensureSubsInfoOverlay() {
+      if (subsInfoOverlay) return subsInfoOverlay;
+      subsInfoOverlay = document.createElement("div");
+      subsInfoOverlay.id = "subsInfoOverlay";
+      subsInfoOverlay.className = "subs-info-popover subs-info-popover--overlay";
+      subsInfoOverlay.setAttribute("role", "tooltip");
+      document.body.appendChild(subsInfoOverlay);
+      return subsInfoOverlay;
+    }
+
+    function closeSubsInfoOverlay() {
+      if (!subsInfoOverlay) return;
+      subsInfoOverlay.classList.remove("is-open");
+      subsInfoOverlay.innerHTML = "";
+      subsInfoOverlay.style.left = "";
+      subsInfoOverlay.style.top = "";
+      subsInfoOverlayAnchorBtn = null;
+    }
+
+    function positionSubsInfoOverlay(btn) {
+      if (!subsInfoOverlay || !btn) return;
+      const rect = btn.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const gap = 8;
+      // сначала ставим приблизительно, затем клампим по фактическим размерам
+      subsInfoOverlay.style.left = `${Math.max(12, rect.left)}px`;
+      subsInfoOverlay.style.top = `${Math.max(12, rect.bottom + gap)}px`;
+
+      const box = subsInfoOverlay.getBoundingClientRect();
+      let left = rect.left;
+      let top = rect.bottom + gap;
+
+      // если не помещается снизу — показываем сверху
+      if (top + box.height > vh - 12) top = rect.top - box.height - gap;
+
+      // clamp
+      left = Math.max(12, Math.min(left, vw - box.width - 12));
+      top = Math.max(12, Math.min(top, vh - box.height - 12));
+
+      subsInfoOverlay.style.left = `${left}px`;
+      subsInfoOverlay.style.top = `${top}px`;
+    }
+
     subsPricing.addEventListener("click", (e) => {
       const btn = e.target.closest(".subs-info-btn");
       if (!btn) return;
       e.preventDefault();
       e.stopPropagation();
-      const wrap = btn.closest(".subs-name-wrap");
-      const popover = wrap?.querySelector(".subs-info-popover");
-      if (!popover) return;
-      const isOpen = popover.classList.toggle("is-open");
-      document.querySelectorAll(".subs-info-popover.is-open").forEach((p) => {
-        if (p !== popover) p.classList.remove("is-open");
-      });
-      if (isOpen) {
-        lastSubsPopoverOpenAt = Date.now();
-        // Позиционируем плашку в viewport (fixed), чтобы не обрезало overflow карточки
-        const rect = btn.getBoundingClientRect();
-        const vh = window.innerHeight;
-        const popoverHeight = 180;
-        const gap = 6;
-        let top = rect.bottom + gap;
-        if (top + popoverHeight > vh - 12) top = rect.top - popoverHeight - gap;
-        const left = Math.max(12, Math.min(rect.left, window.innerWidth - 300));
-        popover.classList.add("subs-info-popover--fixed");
-        popover.style.left = `${left}px`;
-        popover.style.top = `${Math.max(12, top)}px`;
-      } else {
-        popover.classList.remove("subs-info-popover--fixed");
-        popover.style.left = "";
-        popover.style.top = "";
-      }
-    });
-  }
 
-  // Закрытие плашки «Что входит» по клику вне (на мобильных не закрывать в тот же момент, что и открытие)
-  document.addEventListener("click", (e) => {
-    if (e.target.closest(".subs-info-btn") || e.target.closest(".subs-info-popover")) return;
-    if (Date.now() - lastSubsPopoverOpenAt < 250) return;
-    document.querySelectorAll(".subs-info-popover.is-open").forEach((p) => {
-      p.classList.remove("is-open", "subs-info-popover--fixed");
-      p.style.left = "";
-      p.style.top = "";
+      const wrap = btn.closest(".subs-name-wrap");
+      const source = wrap?.querySelector(".subs-info-popover");
+      if (!source) return;
+
+      const overlay = ensureSubsInfoOverlay();
+
+      // toggle: если нажали ту же кнопку и поповер открыт — закрываем
+      if (overlay.classList.contains("is-open") && subsInfoOverlayAnchorBtn === btn) {
+        closeSubsInfoOverlay();
+        return;
+      }
+
+      // открываем и переносим контент
+      overlay.innerHTML = source.innerHTML;
+      overlay.classList.add("is-open");
+      subsInfoOverlayAnchorBtn = btn;
+      subsInfoOverlayLastOpenAt = Date.now();
+
+      // позиционирование после вставки контента
+      requestAnimationFrame(() => positionSubsInfoOverlay(btn));
     });
-  });
+
+    // закрытие по клику вне / скроллу / ресайзу
+    document.addEventListener("click", (e) => {
+      if (!subsInfoOverlay || !subsInfoOverlay.classList.contains("is-open")) return;
+      if (Date.now() - subsInfoOverlayLastOpenAt < 250) return;
+      if (e.target.closest(".subs-info-btn") || e.target.closest("#subsInfoOverlay")) return;
+      closeSubsInfoOverlay();
+    });
+    window.addEventListener("scroll", closeSubsInfoOverlay, { passive: true, capture: true });
+    window.addEventListener("resize", closeSubsInfoOverlay, { passive: true });
+  }
 
   function showSubsRegion(regionKey) {
     const isUA = regionKey === "ua";

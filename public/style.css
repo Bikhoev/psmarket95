@@ -1160,6 +1160,13 @@ body.menu-open {
     border-color: transparent;
     background: transparent;
   }
+  .subs-tab:active {
+    transform: none;
+  }
+  .subs-tab:not(.subs-tab--active):active {
+    border-color: rgba(148, 163, 184, 0.32);
+    background: rgba(255, 255, 255, 0.06);
+  }
   .subs-catalog-tabs .subs-tab--tier-extra:hover,
   .subs-catalog-tabs .subs-tab--tier-deluxe:hover,
   .subs-catalog-tabs .subs-tab--tier-ea:hover {
@@ -1408,10 +1415,19 @@ body.menu-open {
   transition: visibility 0.15s ease, opacity 0.15s ease;
   pointer-events: none;
 }
-/* Открытая плашка с координатами от JS — поверх всего, не обрезается карточкой */
-.subs-info-popover--fixed {
+/* Глобальная плашка (рендерим в body, позиционируем по кнопке) */
+.subs-info-popover--overlay {
   position: fixed;
-  z-index: 10002;
+  left: 12px;
+  top: 12px;
+  margin-top: 0;
+  z-index: 10050;
+  max-width: min(320px, calc(100vw - 24px));
+  transform: translateY(2px);
+  transition: visibility 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+.subs-info-popover--overlay.is-open {
+  transform: translateY(0);
 }
 .subs-name-wrap:hover .subs-info-popover,
 .subs-info-popover.is-open {
@@ -1546,6 +1562,56 @@ body.menu-open {
 
 .subs-catalog-tabs {
   margin: 0 0 4px;
+}
+
+/* Мобилка: вкладки подписок и разделов — одна линия + горизонтальный скролл внутри */
+@media (max-width: 900px) {
+  .subs-tabs.subs-catalog-tabs {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .subs-tabs.subs-catalog-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .subs-tabs.subs-catalog-tabs .subs-tab {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+  }
+
+  /* Разделы каталога (Игры месяца/Каталог игр/Ubisoft+/Классика) */
+  #catalogDeluxeTabs {
+    display: inline-flex;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 999px;
+    background: rgba(2, 6, 23, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.75);
+    margin: 0 0 10px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  #catalogDeluxeTabs::-webkit-scrollbar {
+    display: none;
+  }
+  #catalogDeluxeTabs .subs-tab {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+  }
 }
 
 .subs-catalog-sort-row {
