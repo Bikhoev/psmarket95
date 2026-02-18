@@ -1026,9 +1026,34 @@ ${lines.join("\n\n")}
   }
 
   if (subsPricing) {
+    let subsLineTouch = null;
+    let subsLineTouchHandled = null;
+    subsPricing.addEventListener("touchstart", (e) => {
+      const line = e.target.closest(".subs-line");
+      subsLineTouch = line ? { el: line, x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+    }, { passive: true });
+    subsPricing.addEventListener("touchend", (e) => {
+      const line = e.target.closest(".subs-line");
+      if (!line || !subsLineTouch || subsLineTouch.el !== line) { subsLineTouch = null; return; }
+      const t = e.changedTouches[0];
+      const dx = t ? Math.abs(t.clientX - subsLineTouch.x) : 0;
+      const dy = t ? Math.abs(t.clientY - subsLineTouch.y) : 0;
+      if (dx < 12 && dy < 12) {
+        e.preventDefault();
+        addSubscriptionFromLine(line);
+        subsLineTouchHandled = { el: line, at: Date.now() };
+      }
+      subsLineTouch = null;
+    }, { passive: false });
+
     subsPricing.addEventListener("click", (e) => {
       const line = e.target.closest(".subs-line");
       if (!line) return;
+      if (subsLineTouchHandled?.el === line && Date.now() - subsLineTouchHandled.at < 400) {
+        subsLineTouchHandled = null;
+        return;
+      }
+      subsLineTouchHandled = null;
       addSubscriptionFromLine(line);
     });
 
