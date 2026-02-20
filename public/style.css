@@ -3742,12 +3742,3 @@ a:focus-visible {
   outline: 2px solid rgba(96, 165, 250, 0.6);
   outline-offset: 2px;
 }
-
-/* ===== Telegram Mini App safe-area ===== */
-body.tg-mini-app {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 60px);
-}
-body.tg-mini-app .cart-float-btn {
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
-}
