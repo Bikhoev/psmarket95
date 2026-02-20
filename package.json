@@ -12,7 +12,9 @@
   "dependencies": {
     "cheerio": "^1.1.2",
     "express": "^4.22.1",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.7"
   },
   "description": "",
   "main": "server.js",

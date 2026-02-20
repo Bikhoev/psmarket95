@@ -1,19 +1,40 @@
+import "dotenv/config";
 import express from "express";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
+import { setupBot } from "./server/bot.js";
+import tgAuthRouter from "./server/routes/tgAuth.js";
 
 const app = express();
-app.use(express.static("public"));
-
 const PORT = process.env.PORT || 3000;
 
-// ===== CORS (чтобы фронт мог fetch) =====
+// ===== Body parser (for POST /api/tg/auth) =====
+app.use(express.json());
+
+// ===== Security headers =====
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*"); // для дев-режима
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader(
+    "Content-Security-Policy",
+    "frame-ancestors 'self' https://web.telegram.org https://t.me"
+  );
   next();
 });
+
+// ===== CORS =====
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
+// ===== Telegram auth route =====
+app.use("/api/tg", tgAuthRouter);
+
+// ===== Static files =====
+app.use(express.static("public"));
 
 // ===== Кеш =====
 const cache = new Map(); // key -> { ts, data }
@@ -1214,6 +1235,9 @@ app.get("/api/clear-cache", (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, () => {
-  console.log(`Deals proxy running: http://localhost:${PORT}`);
-});
+(async () => {
+  await setupBot(app);
+  app.listen(PORT, () => {
+    console.log(`Deals proxy running: http://localhost:${PORT}`);
+  });
+})();
