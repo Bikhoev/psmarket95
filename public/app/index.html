@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PSMarket95 — Mini App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#020617" />
+
+    <link rel="icon" type="image/svg+xml" href="../psm-icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../style.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      body.tg-mini-app {
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+      .tg-mini-app .header,
+      .tg-mini-app .hero,
+      .tg-mini-app .footer,
+      .tg-mini-app #calculator,
+      .tg-mini-app #services,
+      .tg-mini-app #how-to-buy,
+      .tg-mini-app #about,
+      .tg-mini-app #contacts {
+        display: none !important;
+      }
+      .tg-mini-app .section:first-child {
+        padding-top: 12px;
+      }
+    </style>
+  </head>
+
+  <body class="tg-mini-app">
+    <main>
+      <section id="top-games" class="section section-alt">
+        <div class="container">
+          <h2 class="section-title">Топ игр</h2>
+          <p class="section-subtitle">Популярные игры из PlayStation Store.</p>
+          <div class="store-section-head">
+            <div class="subs-tabs" role="tablist" aria-label="Регион">
+              <button class="subs-tab subs-tab--active" id="topGamesTabUA" type="button">Европа (UA)</button>
+              <button class="subs-tab" id="topGamesTabTR" type="button">Турция</button>
+            </div>
+          </div>
+          <div class="store-grid-wrap">
+            <div id="topGamesGrid" class="deals-grid"></div>
+            <div class="store-load-more">
+              <button type="button" class="btn-primary" id="topGamesMore">Показать ещё</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="new-releases" class="section">
+        <div class="container">
+          <h2 class="section-title">Новинки и предзаказы</h2>
+          <p class="section-subtitle">Свежие релизы из PlayStation Store.</p>
+          <div class="store-section-head">
+            <div class="subs-tabs" role="tablist" aria-label="Регион">
+              <button class="subs-tab subs-tab--active" id="newReleasesTabUA" type="button">Европа (UA)</button>
+              <button class="subs-tab" id="newReleasesTabTR" type="button">Турция</button>
+            </div>
+          </div>
+          <div class="store-grid-wrap">
+            <div id="newReleasesGrid" class="deals-grid"></div>
+            <div class="store-load-more">
+              <button type="button" class="btn-primary" id="newReleasesMore">Показать ещё</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="deals" class="section section-alt">
+        <div class="container">
+          <h2 class="section-title">Скидки</h2>
+          <p class="section-subtitle">
+            Автоподборка из PlayStation Store. Выбери регион — цены сразу в рублях.
+          </p>
+          <div class="deals-head">
+            <div class="subs-tabs" role="tablist" aria-label="Регион скидок">
+              <button class="subs-tab subs-tab--active" id="dealsTabUA" type="button">Европа (UA)</button>
+              <button class="subs-tab" id="dealsTabTR" type="button">Турция</button>
+            </div>
+
+            <div class="deals-sort">
+              <label class="subs-type-label" for="dealsSort">Сортировка</label>
+              <select id="dealsSort" class="subs-type">
+                <option value="popular">По популярности</option>
+                <option value="discount">По скидке</option>
+              </select>
+              <button class="cart-icon-btn" id="cartOpenBtn" type="button" aria-label="Открыть корзину">
+                <span class="cart-ico" aria-hidden="true">🛒</span>
+                <span class="cart-badge" id="cartCount">0</span>
+              </button>
+            </div>
+
+            <div id="dealsSearchWrap" class="deals-search">
+              <div class="deals-search__row">
+                <div class="deals-search__field">
+                  <input id="dealsSearchInput" class="deals-search__input" type="search"
+                         placeholder="Поиск по скидкам (например: Mafia, FC26, UFC)…" autocomplete="off" />
+                </div>
+              </div>
+            </div>
+
+            <div class="deals-carousel" id="dealsCarousel">
+              <div class="deals-carousel__track" id="dealsCarouselTrack">
+                <div class="deals-carousel__page">
+                  <div id="dealsGrid" class="deals-grid"></div>
+                </div>
+              </div>
+              <div class="deals-carousel__nav">
+                <button type="button" class="deals-carousel__prev" id="dealsCarouselPrev" aria-label="Предыдущая страница">←</button>
+                <span class="deals-carousel__counter" id="dealsCarouselCounter">1</span>
+                <button type="button" class="deals-carousel__next btn-primary" id="dealsMore" aria-label="Следующая страница">Показать ещё</button>
+              </div>
+            </div>
+
+            <p class="subs-note">* Данные берутся из PS Store.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="subscriptions" class="section section-alt">
+        <div class="container">
+          <h2 class="section-title">Подписки</h2>
+          <p class="section-subtitle">Выбери регион — добавляй подписки в корзину вместе с играми.</p>
+
+          <div class="subs-pricing" id="subsPricing">
+            <div class="subs-head">
+              <div class="subs-head-top">
+                <h3 class="subs-title">Прайс на подписки</h3>
+              </div>
+              <p class="subs-subtitle">Нажми на вариант — он добавится в корзину.</p>
+            </div>
+
+            <div class="subs-tabs" role="tablist" aria-label="Регион подписок">
+              <button class="subs-tab subs-tab--active" id="subsTabUA" type="button">Европа (UA)</button>
+              <button class="subs-tab" id="subsTabTR" type="button">Турция</button>
+            </div>
+
+            <div class="subs-catalog-choice" role="group" aria-label="Каталог игр по подпискам">
+              <p class="subs-catalog-choice__label">Посмотреть каталог игр</p>
+              <div class="subs-tabs subs-catalog-tabs" role="tablist" aria-label="Тип подписки">
+                <button type="button" class="subs-tab subs-tab--tier-essential subs-tab--active" id="catalogTabEssential" data-catalog="psplus_essential">Основная</button>
+                <button type="button" class="subs-tab subs-tab--tier-extra" id="catalogTabExtra" data-catalog="psplus_game">Экстра</button>
+                <button type="button" class="subs-tab subs-tab--tier-deluxe" id="catalogTabDeluxe" data-catalog="psplus_deluxe">Люкс</button>
+                <button type="button" class="subs-tab subs-tab--tier-ea" id="catalogTabEa" data-catalog="eaplay">EA Play</button>
+              </div>
+            </div>
+
+            <div class="subs-catalog-panel" id="subsCatalogPanel">
+              <div class="subs-catalog-deluxe-tabs hidden" id="catalogDeluxeTabs" role="tablist" aria-label="Раздел каталога">
+                <button type="button" class="subs-tab subs-tab--active" data-deluxe="psplus_monthly">Игры месяца</button>
+                <button type="button" class="subs-tab" data-deluxe="psplus_game">Каталог игр</button>
+                <button type="button" class="subs-tab" data-deluxe="psplus_ubisoft">Ubisoft+</button>
+                <button type="button" class="subs-tab" data-deluxe="psplus_classics">Каталог классики</button>
+              </div>
+
+              <p class="subs-catalog-note" id="psplusCatalogNote"></p>
+
+              <div class="subs-catalog-carousel" id="psplusCatalogCarousel">
+                <div class="subs-catalog-carousel__track" id="psplusCatalogCarouselTrack">
+                  <div class="subs-catalog-carousel__page">
+                    <div class="subs-catalog-grid" id="psplusCatalogGrid"></div>
+                  </div>
+                </div>
+                <div class="subs-catalog-carousel__nav deals-carousel__nav">
+                  <button type="button" class="deals-carousel__prev" id="psplusCatalogPrev" aria-label="Предыдущая страница">←</button>
+                  <span class="deals-carousel__counter" id="psplusCatalogCounter">1</span>
+                  <button type="button" class="deals-carousel__next btn-primary" id="psplusCatalogMore" aria-label="Следующая страница">Показать ещё</button>
+                  <a class="subs-catalog-store-link" id="psplusCatalogLink" href="#" target="_blank" rel="noopener">Смотреть в PS Store →</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- UA -->
+            <div class="subs-grid" id="subsUA">
+              <div class="subs-card">
+                <div class="subs-card-top">
+                  <div class="subs-name-wrap">
+                    <span class="subs-name">Основная</span>
+                    <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
+                    <div class="subs-info-popover" role="tooltip">
+                      <div class="subs-info-popover__title">Что входит</div>
+                      <ul><li>Онлайн-мультиплеер</li><li>Ежемесячные игры</li><li>Эксклюзивные скидки</li><li>Облачные сохранения</li><li>Share Play</li></ul>
+                    </div>
+                  </div>
+                  <div class="subs-badge">UA</div>
+                </div>
+                <div class="subs-lines">
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="1 месяц" data-price="1190"><span>1 месяц</span><strong>1190₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="3 месяца" data-price="2190"><span>3 месяца</span><strong>2190₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="12 месяцев" data-price="4690"><span>12 месяцев</span><strong>4690₽</strong></div>
+                </div>
+              </div>
+
+              <div class="subs-card">
+                <div class="subs-card-top">
+                  <div class="subs-name-wrap">
+                    <span class="subs-name">Экстра</span>
+                    <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
+                    <div class="subs-info-popover" role="tooltip">
+                      <div class="subs-info-popover__title">Что входит</div>
+                      <ul><li>Всё из тарифа «Основная»</li><li>Каталог игр (сотни игр для PS4/PS5)</li><li>Подборки и коллекции по жанрам</li></ul>
+                    </div>
+                  </div>
+                  <div class="subs-badge">UA</div>
+                </div>
+                <div class="subs-lines">
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="1 месяц" data-price="1590"><span>1 месяц</span><strong>1590₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="3 месяца" data-price="3290"><span>3 месяца</span><strong>3290₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="12 месяцев" data-price="6890"><span>12 месяцев</span><strong>6890₽</strong></div>
+                </div>
+              </div>
+
+              <div class="subs-card">
+                <div class="subs-card-top">
+                  <div class="subs-name-wrap">
+                    <span class="subs-name">Люкс</span>
+                    <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
+                    <div class="subs-info-popover" role="tooltip">
+                      <div class="subs-info-popover__title">Что входит</div>
+                      <ul><li>Всё из тарифа «Экстра»</li><li>Каталог классики</li><li>Пробные версии (триалы) отдельных игр</li></ul>
+                    </div>
+                  </div>
+                  <div class="subs-badge">UA</div>
+                </div>
+                <div class="subs-lines">
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="1 месяц" data-price="1690"><span>1 месяц</span><strong>1690₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="3 месяца" data-price="3590"><span>3 месяца</span><strong>3590₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="12 месяцев" data-price="7890"><span>12 месяцев</span><strong>7890₽</strong></div>
+                </div>
+              </div>
+
+              <div class="subs-card">
+                <div class="subs-card-top">
+                  <div class="subs-name-wrap">
+                    <span class="subs-name">EA Play (Спортивная)</span>
+                    <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
+                    <div class="subs-info-popover" role="tooltip">
+                      <div class="subs-info-popover__title">Что входит</div>
+                      <ul><li>Коллекция игр EA (Vault)</li><li>Ранний доступ к пробным версиям</li><li>Скидка 10% на покупки EA в PS Store</li></ul>
+                    </div>
+                  </div>
+                  <div class="subs-badge">UA</div>
+                </div>
+                <div class="subs-lines">
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="EA Play (Спортивная)" data-period="1 месяц" data-price="990"><span>1 месяц</span><strong>990₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="EA Play (Спортивная)" data-period="12 месяцев" data-price="3300"><span>12 месяцев</span><strong>3300₽</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TR -->
+            <div class="subs-grid hidden" id="subsTR">
+              <div class="subs-card">
+                <div class="subs-card-top">
+                  <div class="subs-name-wrap">
+                    <span class="subs-name">Essential</span>
+                    <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
+                    <div class="subs-info-popover" role="tooltip">
+                      <div class="subs-info-popover__title">Что входит</div>
+                      <ul><li>Онлайн-мультиплеер</li><li>Ежемесячные игры</li><li>Эксклюзивные скидки</li><li>Облачные сохранения</li><li>Share Play</li></ul>
+                    </div>
+                  </div>
+                  <div class="subs-badge">TR</div>
+                </div>
+                <div class="subs-lines">
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Essential" data-period="1 месяц" data-price="1290"><span>1 месяц</span><strong>1290₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Essential" data-period="3 месяца" data-price="2390"><span>3 месяца</span><strong>2390₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Essential" data-period="12 месяцев" data-price="6190"><span>12 месяцев</span><strong>6190₽</strong></div>
+                </div>
+              </div>
+
+              <div class="subs-card">
+                <div class="subs-card-top">
+                  <div class="subs-name-wrap">
+                    <span class="subs-name">Extra</span>
+                    <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
+                    <div class="subs-info-popover" role="tooltip">
+                      <div class="subs-info-popover__title">Что входит</div>
+                      <ul><li>Всё из тарифа Essential</li><li>Каталог игр (сотни игр для PS4/PS5)</li><li>Подборки и коллекции по жанрам</li></ul>
+                    </div>
+                  </div>
+                  <div class="subs-badge">TR</div>
+                </div>
+                <div class="subs-lines">
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="1 месяц" data-price="1590"><span>1 месяц</span><strong>1590₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="3 месяца" data-price="3490"><span>3 месяца</span><strong>3490₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="12 месяцев" data-price="10290"><span>12 месяцев</span><strong>10290₽</strong></div>
+                </div>
+              </div>
+
+              <div class="subs-card">
+                <div class="subs-card-top">
+                  <div class="subs-name-wrap">
+                    <span class="subs-name">Deluxe</span>
+                    <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
+                    <div class="subs-info-popover" role="tooltip">
+                      <div class="subs-info-popover__title">Что входит</div>
+                      <ul><li>Всё из тарифа Extra</li><li>Каталог классики</li><li>Пробные версии (триалы) отдельных игр</li></ul>
+                    </div>
+                  </div>
+                  <div class="subs-badge">TR</div>
+                </div>
+                <div class="subs-lines">
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="1 месяц" data-price="1790"><span>1 месяц</span><strong>1790₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="3 месяца" data-price="4090"><span>3 месяца</span><strong>4090₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="12 месяцев" data-price="11890"><span>12 месяцев</span><strong>11890₽</strong></div>
+                </div>
+              </div>
+
+              <div class="subs-card">
+                <div class="subs-card-top">
+                  <div class="subs-name-wrap">
+                    <span class="subs-name">EA Play</span>
+                    <button type="button" class="subs-info-btn" aria-label="Что входит">i</button>
+                    <div class="subs-info-popover" role="tooltip">
+                      <div class="subs-info-popover__title">Что входит</div>
+                      <ul><li>Коллекция игр EA (Vault)</li><li>Ранний доступ к пробным версиям</li><li>Скидка 10% на покупки EA в PS Store</li></ul>
+                    </div>
+                  </div>
+                  <div class="subs-badge">TR</div>
+                </div>
+                <div class="subs-lines">
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="EA Play" data-period="1 месяц" data-price="990"><span>1 месяц</span><strong>990₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="EA Play" data-period="12 месяцев" data-price="4900"><span>12 месяцев</span><strong>4900₽</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <p class="subs-note">
+              * Подписки добавляются в корзину как отдельные позиции. Наличие и сроки оформления уточняй в поддержке.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Deal details modal -->
+    <div class="modal hidden" id="dealModal" aria-hidden="true">
+      <div class="modal-overlay" id="dealModalOverlay"></div>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="dealModalTitle">
+        <button class="modal-close" id="dealModalClose" aria-label="Закрыть">✕</button>
+        <div class="modal-head">
+          <img class="modal-cover" id="dealModalImg" alt="" />
+          <div class="modal-head-info">
+            <div class="modal-title" id="dealModalTitle">Загрузка…</div>
+            <div class="modal-price" id="dealModalPrice"></div>
+            <a class="modal-buy" id="dealModalBuy" href="#" target="_blank" rel="noopener">Купить</a>
+          </div>
+        </div>
+        <div class="modal-cards">
+          <div class="info-card" id="dealModalUntilRow">
+            <div class="info-row"><span id="dealModalUntilLabel">Скидка действует до</span><strong id="dealModalUntil">—</strong></div>
+          </div>
+          <div class="info-card">
+            <div class="info-row"><span>Платформа</span><strong id="dealModalPlatform">—</strong></div>
+            <div class="info-row"><span>Русский язык</span><strong id="dealModalRu">—</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart modal -->
+    <div class="cart-modal hidden" id="cartModal" aria-hidden="true">
+      <div class="cart-overlay" id="cartOverlay"></div>
+      <div class="cart-panel" role="dialog" aria-modal="true" aria-label="Корзина">
+        <div class="cart-head">
+          <div class="cart-title">Корзина</div>
+          <button class="cart-close" id="cartCloseBtn" type="button">✕</button>
+        </div>
+        <div class="cart-body">
+          <div id="cartList" class="cart-list"></div>
+          <div id="cartEmpty" class="cart-empty">Корзина пустая</div>
+        </div>
+        <div class="cart-foot">
+          <div class="cart-total">Итого: <strong><span id="cartTotal">0</span> ₽</strong></div>
+          <button class="btn-primary" id="cartWhatsappBtn" type="button">Оформить в WhatsApp</button>
+          <button class="btn-secondary" id="cartClearBtn" type="button">Очистить</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="cart-float-btn" id="cartFloatBtn" type="button" aria-label="Открыть корзину">
+      <span class="cart-ico" aria-hidden="true">🛒</span>
+      <span class="cart-badge" id="cartFloatCount"></span>
+    </button>
+
+    <script src="app.js"></script>
+    <script src="../script.js" defer></script>
+  </body>
+</html>

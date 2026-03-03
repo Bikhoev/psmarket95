@@ -36,44 +36,45 @@ function getRate(regionKey, basePrice) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ====== БУРГЕР-МЕНЮ (инициализируем как можно раньше) ======
-  const burger = document.getElementById("burgerToggle");
-  const nav = document.querySelector(".nav");
+  function closeMenu() {}
 
-  function closeMenu() {
-    if (!burger || !nav) return;
-    nav.classList.remove("nav--open");
-    burger.classList.remove("burger--open");
-    document.body.classList.remove("menu-open");
-    burger.setAttribute("aria-expanded", "false");
+  // ====== НАВИГАЦИЯ ПО ВИДАМ (Игры | Подписки | Калькулятор | Инфо) ======
+  function switchView(viewId) {
+    const views = document.querySelectorAll(".view");
+    const navItems = document.querySelectorAll(".bottom-nav__item[data-nav], .logo-link[data-nav], .link[data-nav]");
+    views.forEach((v) => v.classList.toggle("hidden", v.dataset.view !== viewId));
+    navItems.forEach((a) => {
+      const isActive = a.dataset.nav === viewId;
+      if (a.classList.contains("bottom-nav__item")) {
+        a.classList.toggle("bottom-nav__item--active", isActive);
+        a.setAttribute("aria-current", isActive ? "page" : null);
+      }
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  if (burger && nav) {
-    burger.addEventListener("click", () => {
-      const isOpen = nav.classList.toggle("nav--open");
-      burger.classList.toggle("burger--open", isOpen);
-      document.body.classList.toggle("menu-open", isOpen);
-      burger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  document.querySelectorAll(".bottom-nav__item[data-nav], .logo-link[data-nav], .link[data-nav]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (el.dataset.nav) {
+        e.preventDefault();
+        switchView(el.dataset.nav);
+      }
     });
+  });
 
-    nav.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", () => closeMenu());
-    });
-
-    document.addEventListener(
-      "click",
-      (e) => {
-        const isMenuOpen = nav.classList.contains("nav--open");
-        if (!isMenuOpen) return;
-
-        const clickedInsideBurger = burger.contains(e.target);
-        const clickedInsideNav = nav.contains(e.target);
-
-        if (!clickedInsideBurger && !clickedInsideNav) closeMenu();
-      },
-      true
-    );
+  // ====== ТАБЫ КАТАЛОГА (Топ | Новинки | Скидки) ======
+  function switchToDealsTab() {
+    document.querySelectorAll(".catalog-tab").forEach((t) => t.classList.toggle("catalog-tab--active", t.dataset.tab === "deals"));
+    document.querySelectorAll(".catalog-panel").forEach((p) => p.classList.toggle("catalog-panel--active", p.dataset.panel === "deals"));
   }
+
+  document.querySelectorAll(".catalog-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const panelId = tab.dataset.tab;
+      document.querySelectorAll(".catalog-tab").forEach((t) => t.classList.toggle("catalog-tab--active", t.dataset.tab === panelId));
+      document.querySelectorAll(".catalog-panel").forEach((p) => p.classList.toggle("catalog-panel--active", p.dataset.panel === panelId));
+    });
+  });
 
   // ====== КАЛЬКУЛЯТОР (ИГРЫ) ======
   const regionSelect = document.getElementById("region");
@@ -195,6 +196,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const cartTotal = document.getElementById("cartTotal");
   const cartEmpty = document.getElementById("cartEmpty");
 
+  const favPageGrid = document.getElementById("favPageGrid");
+  const favPageEmpty = document.getElementById("favPageEmpty");
+
   const CART_KEY = "psm_cart_v1";
 
   // ✅ ВАЖНО: loadCart() должен быть ДО cart = loadCart()
@@ -234,6 +238,14 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
+  // Глобальная синхронизация кнопок избранного (аналогично updateDealBuyButtonsState)
+  function updateFavButtonsState() {
+    document.querySelectorAll('[data-action="toggle-fav"][data-url]').forEach((btn) => {
+      const url = btn.dataset.url || "";
+      btn.classList.toggle("fav-btn--active", isFavorite(url));
+    });
+  }
+
   // ====== FAVORITES STORAGE ======
   const FAV_KEY = "psm_favs_v1";
   let favs = loadFavs(); // Set(url)
@@ -257,9 +269,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // ✅ единая функция обновления счётчиков избранного
   function updateFavHeaderCount() {
     const el = document.getElementById("favCount");
-    if (!el) return;
-    const n = favs.size;
-    el.textContent = n ? String(n) : "";
+    if (el) el.textContent = favs.size ? String(favs.size) : "";
+    document.querySelectorAll(".panel-fav-count").forEach((e) => {
+      e.textContent = favs.size ? String(favs.size) : "";
+    });
   }
 
   function toggleFavorite(url) {
@@ -269,6 +282,8 @@ document.addEventListener("DOMContentLoaded", () => {
     else favs.add(u);
     saveFavs();
     updateFavHeaderCount();
+    updateFavButtonsState(); // синхронизируем все кнопки ♥ (как updateDealBuyButtonsState)
+    if (document.querySelector("#viewFavorites:not(.hidden)")) renderFavoritesPage();
     return favs.has(u); // true если теперь в избранном
   }
 
@@ -459,10 +474,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderCart() {
-    if (cartCount)
-      cartCount.textContent = cart.length ? String(cart.length) : "";
-    if (cartFloatCount)
-      cartFloatCount.textContent = cart.length ? String(cart.length) : "";
+    const n = cart.length ? String(cart.length) : "";
+    if (cartCount) cartCount.textContent = n;
+    if (cartFloatCount) cartFloatCount.textContent = n;
+    document.querySelectorAll(".panel-cart-count").forEach((e) => {
+      e.textContent = n;
+    });
 
     // синхронизируем кнопки "Купить" -> "В корзине"
     updateDealBuyButtonsState();
@@ -1132,8 +1149,8 @@ ${lines.join("\n\n")}
   function showSubsRegion(regionKey) {
     const isUA = regionKey === "ua";
     if (subsTabUA && subsTabTR) {
-      subsTabUA.classList.toggle("subs-tab--active", isUA);
-      subsTabTR.classList.toggle("subs-tab--active", !isUA);
+    subsTabUA.classList.toggle("subs-tab--active", isUA);
+    subsTabTR.classList.toggle("subs-tab--active", !isUA);
     }
     subsUA?.classList.toggle("hidden", !isUA);
     subsTR?.classList.toggle("hidden", isUA);
@@ -1199,7 +1216,7 @@ ${lines.join("\n\n")}
 
   // инициализация: подписки видимы всегда, калькулятор считает игры
   showSubsRegion("ua");
-  calculateGame();
+      calculateGame();
 
   basePriceInput.addEventListener("input", () => {
     calculateGame();
@@ -1283,7 +1300,7 @@ ${lines.join("\n\n")}
   }
 
   regionSelect.addEventListener("change", () => {
-    calculateGame();
+      calculateGame();
   });
 
   const sections = document.querySelectorAll(
@@ -1335,6 +1352,7 @@ ${lines.join("\n\n")}
   let dealsSort = "popular"; // popular | discount | new
   let dealsOffset = 0;
   const DEALS_LIMIT = 24;
+  const FAVORITES_LIMIT = 12;
   let dealsPages = []; // массив HTML-строк, по одной на страницу карусели
   let dealsCurrentPage = 0;
   let dealsTotalFromApi = 0;
@@ -1366,56 +1384,81 @@ ${lines.join("\n\n")}
     }
   }
 
-  // ====== HEADER FAVORITES BUTTON (рядом с корзиной) ======
-  function ensureFavHeaderButton() {
-    if (document.getElementById("favOpenBtn")) return;
-    if (!cartOpenBtn) return;
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "favOpenBtn";
-    btn.className = "header-fav-btn";
-    btn.setAttribute("aria-label", "Избранное");
-    btn.innerHTML = `
-    <span class="header-fav-btn__icon">♥</span>
-    <span class="header-fav-btn__count" id="favCount"></span>
-  `;
-
-    // Вставим рядом с кнопкой корзины
-    cartOpenBtn.insertAdjacentElement("beforebegin", btn);
-
-    btn.addEventListener("click", async () => {
-      ensureDealsSearchUI();
-
-      // toggle избранного
-      favoritesViewActive = !favoritesViewActive;
-
-      // сбрасываем текстовый поиск при переключении режима
-      const input = document.getElementById("dealsSearchInput");
-      if (input) input.value = "";
-      dealsSearchQuery = "";
-      dealsSearchActive = false;
-
-      if (favoritesViewActive) {
-        await renderFavoritesView();
-        showToast("Показаны избранные игры", "success", 1400);
-      } else {
-        showToast("Избранное закрыто", "success", 1200);
-        fetchDealsPage({ reset: true }).catch((e) => {
-          if (dealsGrid)
-            setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`);
-        });
+  // ====== FAVORITES PAGE (отдельная страница) ======
+  async function renderFavoritesPage() {
+    if (!favPageGrid || !favPageEmpty) return;
+    if (!favs || !favs.size) {
+      favPageGrid.innerHTML = "";
+      favPageEmpty.classList.remove("hidden");
+      return;
+    }
+    favPageEmpty.classList.add("hidden");
+    favPageGrid.innerHTML = psLoaderHtml("Загрузка…");
+    try {
+      const all = await loadAllCatalogItemsForFavorites();
+      const favItems = (all || []).filter((it) => isFavorite(it.url));
+      if (favItems.length === 0) {
+        favPageGrid.innerHTML = "";
+        favPageEmpty.classList.remove("hidden");
+        return;
       }
+      favPageEmpty.classList.add("hidden");
+      const html = buildStoreCardsHtmlWithRegions(favItems);
+      favPageGrid.innerHTML = html || "";
+    } catch (e) {
+      favPageGrid.innerHTML = `<div class="deal-meta">Ошибка: ${e.message}</div>`;
+    }
+    updateFavButtonsState();
+    updateDealBuyButtonsState();
+  }
 
-      syncDealsControls();
+  function openFavPage() {
+    switchView("favorites");
+    renderFavoritesPage();
+  }
+
+  // ====== HEADER FAVORITES BUTTON ======
+  function ensureFavHeaderButton() {
+    let btn = document.getElementById("favOpenBtn");
+    if (!btn && cartOpenBtn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "favOpenBtn";
+      btn.className = "bottom-nav-icon";
+      btn.setAttribute("aria-label", "Избранное");
+      btn.innerHTML = `<span class="bottom-nav-icon__sym">♥</span><span class="bottom-nav-icon__badge" id="favCount"></span>`;
+      cartOpenBtn.insertAdjacentElement("beforebegin", btn);
+    }
+    if (!btn || btn._favHandlerAttached) return;
+    btn._favHandlerAttached = true;
+
+    btn.addEventListener("click", () => {
+      openFavPage();
     });
 
-    // обновляет цифру на кнопке ♥ (функция у тебя есть выше по файлу)
     updateFavHeaderCount?.();
   }
 
-  // Создадим кнопку в шапке сразу
   ensureFavHeaderButton();
+
+  // ====== PANEL FAV/CART BUTTONS (если есть) ======
+  function openFavFromPanel() {
+    openFavPage();
+  }
+
+  document.body.addEventListener("click", (e) => {
+    const favBtn = e.target.closest("[data-panel-fav]");
+    const cartBtn = e.target.closest("[data-panel-cart]");
+    if (favBtn) {
+      e.preventDefault();
+      openFavFromPanel();
+    }
+    if (cartBtn) {
+      e.preventDefault();
+      openCart();
+    }
+  });
+
 
   // ====== UI поиска (без кнопки "Найти") + отдельное закрытие избранного ======
   function ensureDealsSearchUI() {
@@ -1542,12 +1585,49 @@ ${lines.join("\n\n")}
     _searchT = setTimeout(fn, ms);
   }
 
+  // Загрузить все каталоги (скидки + топ + новинки) для отображения избранного
+  // Берём из обоих регионов, т.к. игра могла быть добавлена из Топ игр, Новинок или Скидок
+  async function loadAllCatalogItemsForFavorites() {
+    const seen = new Map();
+    const merge = (items, region) => {
+      (items || []).forEach((it) => {
+        const url = it.url || "";
+        if (url && !seen.has(url)) seen.set(url, { ...it, _region: region });
+      });
+    };
+    const limit = 60;
+    const regions = ["ua", "tr"];
+    try {
+      const reqs = [];
+      for (const r of regions) {
+        reqs.push(
+          fetch(`/api/deals?region=${r}&pages=5&offset=0&limit=${limit}`).then((x) => x.json()),
+          fetch(`/api/top-games?region=${r}&offset=0&limit=${limit}`).then((x) => x.json()),
+          fetch(`/api/new-releases?region=${r}&offset=0&limit=${limit}`).then((x) => x.json())
+        );
+      }
+      const results = await Promise.all(reqs);
+      let i = 0;
+      for (const r of regions) {
+        merge(results[i++]?.items, r);
+        merge(results[i++]?.items, r);
+        merge(results[i++]?.items, r);
+      }
+      return Array.from(seen.values()).map((it) => ({
+        ...it,
+        region: it._region || dealsRegion,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   // Загрузить ВЕСЬ список скидок в память (для поиска/избранного)
-  async function loadAllDealsForCurrentRegionSort() {
+  async function loadAllDealsForCurrentRegionSort(opts = {}) {
     const key = `${dealsRegion}|${dealsSort}`;
     if (dealsFullCache.has(key)) return dealsFullCache.get(key);
 
-    if (dealsGrid) dealsGrid.innerHTML = psLoaderHtml("Загружаем полный список…");
+    if (!opts.silent && dealsGrid) dealsGrid.innerHTML = psLoaderHtml("Загружаем полный список…");
 
     const all = [];
     let offset = 0;
@@ -1593,11 +1673,12 @@ ${lines.join("\n\n")}
     if (!dealsClickRoot) return;
 
     if (!items || items.length === 0) {
-      const emptyHtml = "<div class='deal-meta'>Ничего не найдено.</div>";
+      const emptyHtml = "<div class='favorites-empty'><div class='deal-meta'>Ничего не найдено.</div></div>";
       if (dealsCarouselTrack) {
         dealsPages = [emptyHtml];
         dealsCurrentPage = 0;
         renderDealsCarousel();
+        if (dealsCarouselNav) dealsCarouselNav.style.display = "none";
       } else if (dealsGrid) {
         dealsGrid.innerHTML = emptyHtml;
       }
@@ -1680,8 +1761,8 @@ ${lines.join("\n\n")}
       renderDealsCarousel();
       if (dealsMoreBtn) dealsMoreBtn.style.display = "none";
     } else if (dealsGrid) {
-      dealsGrid.innerHTML = cards;
-      if (dealsMoreBtn) dealsMoreBtn.style.display = "none";
+    dealsGrid.innerHTML = cards;
+    if (dealsMoreBtn) dealsMoreBtn.style.display = "none";
     }
   }
 
@@ -1691,11 +1772,12 @@ ${lines.join("\n\n")}
     if (!dealsClickRoot) return;
 
     if (!favs || !favs.size) {
-      const emptyHtml = "<div class='deal-meta'>В избранном пока пусто. Нажми ♥ на игре — и она появится здесь.</div>";
+      const emptyHtml = "<div class='favorites-empty'><div class='deal-meta'>В избранном пока пусто. Нажми ♥ на игре — и она появится здесь.</div></div>";
       if (dealsCarouselTrack) {
         dealsPages = [emptyHtml];
         dealsCurrentPage = 0;
         renderDealsCarousel();
+        if (dealsCarouselNav) dealsCarouselNav.style.display = "none";
       } else if (dealsGrid) {
         dealsGrid.innerHTML = emptyHtml;
       }
@@ -1711,7 +1793,89 @@ ${lines.join("\n\n")}
     const q = String(dealsSearchQuery || "").trim();
     const shown = q ? filterDeals(favItems, q) : favItems;
 
-    renderDealsFromItems(shown);
+    if (shown.length === 0) {
+      const emptyHtml = "<div class='favorites-empty'><div class='deal-meta'>Ничего не найдено.</div></div>";
+      if (dealsCarouselTrack) {
+        dealsPages = [emptyHtml];
+        dealsCurrentPage = 0;
+        renderDealsCarousel();
+        if (dealsCarouselNav) dealsCarouselNav.style.display = "none";
+      } else if (dealsGrid) {
+        dealsGrid.innerHTML = emptyHtml;
+      }
+      if (dealsMoreBtn) dealsMoreBtn.style.display = "none";
+      syncDealsControls();
+      return;
+    }
+
+    // Пагинация по 12 игр на страницу
+    const chunks = [];
+    for (let i = 0; i < shown.length; i += FAVORITES_LIMIT) {
+      const slice = shown.slice(i, i + FAVORITES_LIMIT);
+      const cards = slice
+        .map((it) => {
+          const meta =
+            it.discountPercent != null
+              ? `-${it.discountPercent}% • ${it.psOffer}`
+              : it.psOffer;
+          const safeTitle = (it.title || "").replace(/"/g, "&quot;");
+          const img = makeHiResImg(it.img, 720);
+          const favActive = isFavorite(it.url) ? "fav-btn--active" : "";
+          const inCart = isInCart(dealsRegion, it.url);
+          const buyClass = inCart ? "deal-buy--in-cart" : "";
+          const buyText = inCart ? "В корзине" : "Купить";
+          return `
+<article class="deal-card"
+  data-url="${it.url}"
+  data-title="${safeTitle}"
+  data-img="${img}"
+  data-rub="${it.rubPrice}">
+  <div class="deal-media">
+    <button class="fav-btn ${favActive}" type="button"
+      aria-label="Добавить в избранное"
+      data-action="toggle-fav"
+      data-url="${it.url}">♥</button>
+    <img class="deal-img"
+      src="${makeHiResImg(it.img, 720)}"
+      srcset="${buildSrcset(it.img)}"
+      sizes="(max-width: 800px) 50vw, 16vw"
+      alt="${safeTitle}"
+      loading="lazy"
+    />
+    ${it.discountPercent != null ? `<div class="deal-badge">-${it.discountPercent}</div>` : ""}
+  </div>
+  <div class="deal-body">
+    <div class="deal-title" title="${safeTitle}">${it.title}</div>
+    <div class="deal-priceRow">
+      <div class="deal-rub">${it.rubPrice} ₽</div>
+      <div class="deal-ps">${meta || ""}</div>
+    </div>
+    <div class="deal-actions">
+      <button class="deal-btn deal-buy ${buyClass}" type="button" aria-pressed="${inCart ? "true" : "false"}"
+        data-action="add-to-cart"
+        data-title="${safeTitle}"
+        data-img="${img}"
+        data-url="${it.url}"
+        data-rub="${it.rubPrice}"
+        data-region="${dealsRegion}">${buyText}</button>
+    </div>
+  </div>
+</article>`;
+        })
+        .join("");
+      chunks.push(cards);
+    }
+
+    dealsTotalFromApi = 0;
+    dealsPages = chunks;
+    dealsCurrentPage = 0;
+    renderDealsCarousel();
+    if (dealsCarouselNav) {
+      dealsCarouselNav.style.display = chunks.length > 1 ? "" : "none";
+    }
+    if (dealsMoreBtn) {
+      dealsMoreBtn.style.display = chunks.length > 1 ? "inline-block" : "none";
+    }
     syncDealsControls();
   }
 
@@ -1787,6 +1951,8 @@ ${lines.join("\n\n")}
   const dealModalBuy = document.getElementById("dealModalBuy");
 
   const dealModalUntil = document.getElementById("dealModalUntil");
+  const dealModalUntilRow = document.getElementById("dealModalUntilRow");
+  const dealModalUntilLabel = document.getElementById("dealModalUntilLabel");
   const dealModalPlatform = document.getElementById("dealModalPlatform");
   const dealModalRu = document.getElementById("dealModalRu");
 
@@ -1893,11 +2059,16 @@ ${lines.join("\n\n")}
     });
   }
 
-  // Единый контейнер для делегирования (карусель или один грид)
+  // Единый контейнер для делегирования (карусель или один грид) — используется для проверок
   const dealsClickRoot = dealsCarouselTrack || dealsGrid;
 
-  // ✅ ЕДИНСТВЕННЫЙ обработчик кликов по гриду/карусели:
-  dealsClickRoot?.addEventListener("click", async (e) => {
+  // Регион карточки: из data-region карточки или deals (fallback)
+  function getCardRegion(card) {
+    return card?.dataset?.region || dealsRegion;
+  }
+
+  // ✅ ЕДИНСТВЕННЫЙ обработчик кликов по всем гридам (deals, top-games, new-releases):
+  document.body.addEventListener("click", async (e) => {
     // 0) ❤️ Избранное (сердечко на обложке)
     const favBtn = e.target.closest('[data-action="toggle-fav"]');
     if (favBtn) {
@@ -1906,8 +2077,7 @@ ${lines.join("\n\n")}
 
       const url = favBtn.dataset.url || "";
       const nowFav = toggleFavorite(url);
-
-      favBtn.classList.toggle("fav-btn--active", nowFav);
+      // updateFavButtonsState уже вызван в toggleFavorite
 
       // если мы сейчас в избранном режиме и удалили — карточка должна исчезнуть
       if (favoritesViewActive && !nowFav) {
@@ -1957,16 +2127,29 @@ ${lines.join("\n\n")}
       return;
     }
 
-    // 2) Клик по карточке -> модалка
+    // 2) Клик по карточке -> модалка (работает во всех вкладках: Топ игр, Новинки, Скидки)
     const card = e.target.closest(".deal-card");
-    if (!card) return;
+    if (!card || !card.closest("#viewCatalog")) return;
 
     const url = card.dataset.url || "";
     const title = card.dataset.title || "Игра";
     const img = card.dataset.img || "";
     const rub = card.dataset.rub || "";
+    const cardRegion = getCardRegion(card);
+    const isPreOrder = card.dataset.preorder === "1";
+    const hasDiscount = card.dataset.discount === "1";
 
     dealModalTitle.textContent = title;
+
+    // Плашка "Скидка/Дата/Дата выхода": всегда показывать, если есть данные
+    if (dealModalUntilRow) {
+      dealModalUntilRow.classList.remove("hidden");
+      if (dealModalUntilLabel) {
+        if (isPreOrder) dealModalUntilLabel.textContent = "Дата релиза";
+        else if (hasDiscount) dealModalUntilLabel.textContent = "Скидка действует до";
+        else dealModalUntilLabel.textContent = "Дата выхода";
+      }
+    }
 
     const hi = makeHiResImg(img, 720);
     if (hi) {
@@ -1990,11 +2173,11 @@ ${lines.join("\n\n")}
       img,
       url,
       rubPrice: Number(rub || 0),
-      region: dealsRegion,
+      region: cardRegion,
     };
 
     if (dealModalBuy) {
-      dealModalBuy.textContent = isInCart(dealsRegion, url) ? "В корзине" : "Купить";
+      dealModalBuy.textContent = isInCart(cardRegion, url) ? "В корзине" : "Купить";
     }
 
     ensureModalFavButton();
@@ -2010,13 +2193,14 @@ ${lines.join("\n\n")}
 
     try {
       const res = await fetch(
-        `/api/game-details?region=${dealsRegion}&url=${encodeURIComponent(url)}`
+        `/api/game-details?region=${cardRegion}&url=${encodeURIComponent(url)}`
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
       dealModalPlatform.textContent = data.platform || "—";
-      dealModalRu.textContent = data.ruSupport || "—";
+      const ruText = data.ruSupport || "—";
+      dealModalRu.textContent = ruText === "Нет данных" ? "Нет русского" : ruText;
       dealModalUntil.textContent = data.discountUntil || "—";
     } catch (err) {
       dealModalPlatform.textContent = "Не удалось загрузить";
@@ -2043,7 +2227,9 @@ ${lines.join("\n\n")}
   data-url="${it.url}"
   data-title="${safeTitle}"
   data-img="${img}"
-  data-rub="${it.rubPrice}">
+  data-rub="${it.rubPrice}"
+  data-region="${dealsRegion}"
+  data-discount="${it.discountPercent != null ? "1" : ""}">
   <div class="deal-media">
     <button class="fav-btn ${favActive}" type="button"
       aria-label="Добавить в избранное"
@@ -2072,6 +2258,78 @@ ${lines.join("\n\n")}
         data-url="${it.url}"
         data-rub="${it.rubPrice}"
         data-region="${dealsRegion}">${buyText}</button>
+    </div>
+  </div>
+</article>`;
+      })
+      .join("");
+  }
+
+  // Карточки для модалки избранного (каждый item может быть из своего региона)
+  function buildStoreCardsHtmlWithRegions(items) {
+    return (items || []).map((it) => {
+      const region = it.region || it._region || dealsRegion;
+      return buildStoreCardsHtml([it], region);
+    }).join("");
+  }
+
+  // Карточки для Top Games и New Releases (с бейджем предзаказа)
+  function buildStoreCardsHtml(items, region) {
+    return (items || [])
+      .map((it) => {
+        const meta =
+          it.discountPercent != null
+            ? `-${it.discountPercent}% • ${it.psOffer}`
+            : it.psOffer;
+        const safeTitle = (it.title || "").replace(/"/g, "&quot;");
+        const img = makeHiResImg(it.img, 720);
+        const favActive = isFavorite(it.url) ? "fav-btn--active" : "";
+        const inCart = isInCart(region, it.url);
+        const buyClass = inCart ? "deal-buy--in-cart" : "";
+        const buyText = inCart ? "В корзине" : "Купить";
+        const badge = it.isPreOrder
+          ? '<div class="deal-badge deal-badge--preorder">Предзаказ</div>'
+          : it.discountPercent != null
+            ? `<div class="deal-badge">-${it.discountPercent}</div>`
+            : "";
+        const rubDisplay = it.rubPrice === 0 ? "Бесплатно" : `${it.rubPrice} ₽`;
+        return `
+<article class="deal-card"
+  data-url="${it.url}"
+  data-title="${safeTitle}"
+  data-img="${img}"
+  data-rub="${it.rubPrice}"
+  data-region="${region}"
+  data-preorder="${it.isPreOrder ? "1" : ""}"
+  data-discount="${it.discountPercent != null ? "1" : ""}">
+  <div class="deal-media">
+    <button class="fav-btn ${favActive}" type="button"
+      aria-label="Добавить в избранное"
+      data-action="toggle-fav"
+      data-url="${it.url}">♥</button>
+    <img class="deal-img"
+      src="${makeHiResImg(it.img, 720)}"
+      srcset="${buildSrcset(it.img)}"
+      sizes="(max-width: 800px) 50vw, 16vw"
+      alt="${safeTitle}"
+      loading="lazy"
+    />
+    ${badge}
+  </div>
+  <div class="deal-body">
+    <div class="deal-title" title="${safeTitle}">${it.title}</div>
+    <div class="deal-priceRow">
+      <div class="deal-rub">${rubDisplay}</div>
+      <div class="deal-ps">${meta || ""}</div>
+    </div>
+    <div class="deal-actions">
+      <button class="deal-btn deal-buy ${buyClass}" type="button" aria-pressed="${inCart ? "true" : "false"}"
+        data-action="add-to-cart"
+        data-title="${safeTitle}"
+        data-img="${img}"
+        data-url="${it.url}"
+        data-rub="${it.rubPrice}"
+        data-region="${region}">${buyText}</button>
     </div>
   </div>
 </article>`;
@@ -2142,7 +2400,7 @@ ${lines.join("\n\n")}
 
     if (favoritesViewActive) {
       await renderFavoritesView();
-      syncDealsControls();
+    syncDealsControls();
       return;
     }
 
@@ -2313,12 +2571,12 @@ ${lines.join("\n\n")}
             dealsPages = [`<div class='deal-meta'>Ошибка: ${e.message}</div>`];
             renderDealsCarousel();
           } else if (dealsGrid) {
-            dealsGrid.insertAdjacentHTML(
-              "beforeend",
-              `<div class='deal-meta'>Ошибка: ${e.message}</div>`
-            );
+        dealsGrid.insertAdjacentHTML(
+          "beforeend",
+          `<div class='deal-meta'>Ошибка: ${e.message}</div>`
+        );
           }
-        });
+      });
     });
   }
 
@@ -2354,5 +2612,136 @@ ${lines.join("\n\n")}
   if (dealsGrid) {
     safeFetchDealsFirstTime();
   }
+
+  // ====== TOP GAMES (Топ игр) ======
+  const topGamesGrid = document.getElementById("topGamesGrid");
+  const topGamesTabUA = document.getElementById("topGamesTabUA");
+  const topGamesTabTR = document.getElementById("topGamesTabTR");
+  const topGamesMoreBtn = document.getElementById("topGamesMore");
+
+  let topGamesRegion = "ua";
+  let topGamesOffset = 0;
+  const TOP_GAMES_LIMIT = 24;
+  let topGamesTotal = 0;
+
+  async function fetchTopGames(reset = false) {
+    if (!topGamesGrid) return;
+    if (reset) {
+      topGamesOffset = 0;
+      topGamesGrid.innerHTML = psLoaderHtml("Загружаем топ игр…");
+      if (topGamesMoreBtn) topGamesMoreBtn.style.display = "none";
+    }
+
+    try {
+      const res = await fetch(
+        `/api/top-games?region=${topGamesRegion}&offset=${topGamesOffset}&limit=${TOP_GAMES_LIMIT}`
+      );
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      topGamesTotal = Number(data.total || 0);
+      const html = buildStoreCardsHtml(data.items || [], topGamesRegion);
+
+      if (reset) {
+        topGamesGrid.innerHTML = html || "<div class='deal-meta'>Ничего не найдено.</div>";
+      } else {
+        topGamesGrid.insertAdjacentHTML("beforeend", html);
+      }
+
+      topGamesOffset += (data.items || []).length;
+      if (topGamesMoreBtn) {
+        topGamesMoreBtn.style.display =
+          topGamesOffset < topGamesTotal ? "inline-block" : "none";
+      }
+    } catch (e) {
+      topGamesGrid.innerHTML = `<div class='deal-meta'>Ошибка: ${e.message}</div>`;
+      if (topGamesMoreBtn) topGamesMoreBtn.style.display = "none";
+    }
+  }
+
+  if (topGamesTabUA && topGamesTabTR) {
+    topGamesTabUA.addEventListener("click", () => {
+      topGamesRegion = "ua";
+      topGamesTabUA.classList.add("subs-tab--active");
+      topGamesTabTR.classList.remove("subs-tab--active");
+      fetchTopGames(true);
+    });
+    topGamesTabTR.addEventListener("click", () => {
+      topGamesRegion = "tr";
+      topGamesTabTR.classList.add("subs-tab--active");
+      topGamesTabUA.classList.remove("subs-tab--active");
+      fetchTopGames(true);
+    });
+  }
+  if (topGamesMoreBtn) {
+    topGamesMoreBtn.addEventListener("click", () => fetchTopGames(false));
+  }
+  if (topGamesGrid) fetchTopGames(true);
+
+  // ====== NEW RELEASES (Новинки и предзаказы) ======
+  const newReleasesGrid = document.getElementById("newReleasesGrid");
+  const newReleasesTabUA = document.getElementById("newReleasesTabUA");
+  const newReleasesTabTR = document.getElementById("newReleasesTabTR");
+  const newReleasesMoreBtn = document.getElementById("newReleasesMore");
+
+  let newReleasesRegion = "ua";
+  let newReleasesOffset = 0;
+  const NEW_RELEASES_LIMIT = 24;
+  let newReleasesTotal = 0;
+
+  async function fetchNewReleases(reset = false) {
+    if (!newReleasesGrid) return;
+    if (reset) {
+      newReleasesOffset = 0;
+      newReleasesGrid.innerHTML = psLoaderHtml("Загружаем новинки…");
+      if (newReleasesMoreBtn) newReleasesMoreBtn.style.display = "none";
+    }
+
+    try {
+      const res = await fetch(
+        `/api/new-releases?region=${newReleasesRegion}&offset=${newReleasesOffset}&limit=${NEW_RELEASES_LIMIT}`
+      );
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      newReleasesTotal = Number(data.total || 0);
+      const html = buildStoreCardsHtml(data.items || [], newReleasesRegion);
+
+      if (reset) {
+        newReleasesGrid.innerHTML =
+          html || "<div class='deal-meta'>Ничего не найдено.</div>";
+      } else {
+        newReleasesGrid.insertAdjacentHTML("beforeend", html);
+      }
+
+      newReleasesOffset += (data.items || []).length;
+      if (newReleasesMoreBtn) {
+        newReleasesMoreBtn.style.display =
+          newReleasesOffset < newReleasesTotal ? "inline-block" : "none";
+      }
+    } catch (e) {
+      newReleasesGrid.innerHTML = `<div class='deal-meta'>Ошибка: ${e.message}</div>`;
+      if (newReleasesMoreBtn) newReleasesMoreBtn.style.display = "none";
+    }
+  }
+
+  if (newReleasesTabUA && newReleasesTabTR) {
+    newReleasesTabUA.addEventListener("click", () => {
+      newReleasesRegion = "ua";
+      newReleasesTabUA.classList.add("subs-tab--active");
+      newReleasesTabTR.classList.remove("subs-tab--active");
+      fetchNewReleases(true);
+    });
+    newReleasesTabTR.addEventListener("click", () => {
+      newReleasesRegion = "tr";
+      newReleasesTabTR.classList.add("subs-tab--active");
+      newReleasesTabUA.classList.remove("subs-tab--active");
+      fetchNewReleases(true);
+    });
+  }
+  if (newReleasesMoreBtn) {
+    newReleasesMoreBtn.addEventListener("click", () => fetchNewReleases(false));
+  }
+  if (newReleasesGrid) fetchNewReleases(true);
 
 });

@@ -1,19 +1,40 @@
+import "dotenv/config";
 import express from "express";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
+import { setupBot } from "./server/bot.js";
+import tgAuthRouter from "./server/routes/tgAuth.js";
 
 const app = express();
-app.use(express.static("public"));
-
 const PORT = process.env.PORT || 3000;
 
-// ===== CORS (чтобы фронт мог fetch) =====
+// ===== Body parser (for POST /api/tg/auth) =====
+app.use(express.json());
+
+// ===== Security headers =====
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*"); // для дев-режима
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader(
+    "Content-Security-Policy",
+    "frame-ancestors 'self' https://web.telegram.org https://t.me"
+  );
   next();
 });
+
+// ===== CORS =====
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
+// ===== Telegram auth route =====
+app.use("/api/tg", tgAuthRouter);
+
+// ===== Static files =====
+app.use(express.static("public"));
 
 // ===== Кеш =====
 const cache = new Map(); // key -> { ts, data }
@@ -26,6 +47,11 @@ const PSPLUS_TTL_MS = 1000 * 60 * 60 * 6; // 6 часов
 // ===== PAGE-LEVEL CACHE (ускорение: кэшируем разбор каждой страницы отдельно) =====
 const psplusPageCache = new Map(); // key -> { ts, data } where data = items[]
 const dealsPageCache = new Map(); // key -> { ts, data } where data = items[]
+
+// ===== TOP GAMES & NEW RELEASES CACHE =====
+const topGamesCache = new Map(); // key -> { ts, data }
+const newReleasesCache = new Map(); // key -> { ts, data }
+const STORE_PAGE_TTL_MS = 1000 * 60 * 30; // 30 минут
 
 async function mapWithConcurrency(list, concurrency, fn) {
   const arr = Array.from(list);
@@ -285,6 +311,116 @@ function parseDealsList($, regionKey) {
   return uniq;
 }
 
+// ===== Парсер для страниц browse (топ) и latest (новинки): те же поля + isPreOrder, поддержка Free =====
+function parseStorePageList($, regionKey) {
+  const items = [];
+  const freeKeywords = regionKey === "ua" ? ["Бесплатно"] : ["Free"];
+  const preOrderKeywords = regionKey === "ua" ? ["Pre-Order", "Предзаказ"] : ["Pre-Order"];
+
+  const selector = 'a[href*="/concept/"], a[href*="/product/"]';
+  $(selector).each((_, a) => {
+    const $a = $(a);
+    const title = $a.text().trim();
+    if (!title || title.length < 2) return;
+
+    const li = $a.closest("li") || $a.closest("article");
+    if (!li || li.length === 0) return;
+
+    const liText = li.text().replace(/\s+/g, " ").trim();
+    const isPreOrder = preOrderKeywords.some((k) =>
+      new RegExp(k, "i").test(liText)
+    );
+
+    const discMatch = liText.match(/-?\s?(\d{1,2})%/);
+    const discountPercent = discMatch ? Number(discMatch[1]) : null;
+
+    let offerStr = "";
+    let originalStr = "";
+    let base = 0;
+
+    const isFree = freeKeywords.some((k) =>
+      new RegExp(`\\b${k}\\b`, "i").test(liText)
+    );
+
+    if (isFree) {
+      offerStr = regionKey === "ua" ? "Бесплатно" : "Free";
+      base = 0;
+    } else {
+      if (regionKey === "ua") {
+        const matches = liText.match(/UAH\s?[\d\s.,]+/g);
+        if (matches && matches.length >= 1) offerStr = matches[0];
+        if (matches && matches.length >= 2) originalStr = matches[1];
+      } else {
+        const matches = liText.match(/[\d\s.,]+?\s?TL/g);
+        if (matches && matches.length >= 1) offerStr = matches[0];
+        if (matches && matches.length >= 2) originalStr = matches[1];
+      }
+      if (!offerStr) return;
+      base = normalizeNumber(offerStr);
+      if (!Number.isFinite(base)) return;
+    }
+
+    const img = li.find("img").first();
+    const rawImg = img.attr("src") || img.attr("data-src") || "";
+    const imgSrc = upgradeImg(rawImg);
+    const url = absUrl($a.attr("href"));
+
+    const rate = getRate(regionKey, base);
+    const rubPrice = base === 0 ? 0 : niceRubPrice(base * rate);
+
+    items.push({
+      title,
+      img: imgSrc,
+      url,
+      psOffer: offerStr,
+      psOriginal: originalStr || null,
+      discountPercent,
+      basePrice: base,
+      rubPrice,
+      isPreOrder,
+    });
+  });
+
+  const seen = new Set();
+  const uniq = [];
+  for (const it of items) {
+    const key = (it.url || "") + "|" + it.title;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(it);
+  }
+  return uniq;
+}
+
+async function getTopGamesFull(regionKey) {
+  const locale = regionKey === "ua" ? "ru-ua" : "en-tr";
+  const url = `https://store.playstation.com/${locale}/pages/browse`;
+  const key = `top:${regionKey}`;
+  const cached = topGamesCache.get(key);
+  if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) return cached.data;
+
+  const html = await fetchHtml(url);
+  const $ = cheerio.load(html);
+  const items = parseStorePageList($, regionKey);
+  if (items.length > 0) topGamesCache.set(key, { ts: Date.now(), data: items });
+  return items;
+}
+
+async function getNewReleasesFull(regionKey) {
+  const locale = regionKey === "ua" ? "ru-ua" : "en-tr";
+  const url = `https://store.playstation.com/${locale}/pages/latest`;
+  const key = `latest:${regionKey}`;
+  const cached = newReleasesCache.get(key);
+  if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) return cached.data;
+
+  const html = await fetchHtml(url);
+  const $ = cheerio.load(html);
+  const items = parseStorePageList($, regionKey);
+  if (items.length > 0)
+    newReleasesCache.set(key, { ts: Date.now(), data: items });
+  return items;
+}
+
 async function getDealsFull(regionKey, pages = 10) {
   const locale = regionKey === "ua" ? "ru-ua" : "en-tr";
   const dealsUrl = `https://store.playstation.com/${locale}/pages/deals`;
@@ -380,6 +516,62 @@ app.get("/api/deals", async (req, res) => {
       sort,
       cached: !!(cached && Date.now() - cached.ts < CACHE_TTL_MS),
       total: sorted.length,
+      offset,
+      limit,
+      items: slice,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== TOP GAMES (популярные) =====
+// /api/top-games?region=ua|tr&offset=0&limit=24
+app.get("/api/top-games", async (req, res) => {
+  const region = (req.query.region || "ua").toString();
+  const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
+  const limit = Math.min(
+    Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
+    60
+  );
+
+  if (!["ua", "tr"].includes(region))
+    return res.status(400).json({ error: "region must be ua|tr" });
+
+  try {
+    const full = await getTopGamesFull(region);
+    const slice = full.slice(offset, offset + limit);
+    res.json({
+      region,
+      total: full.length,
+      offset,
+      limit,
+      items: slice,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== NEW RELEASES (новинки, предзаказы) =====
+// /api/new-releases?region=ua|tr&offset=0&limit=24
+app.get("/api/new-releases", async (req, res) => {
+  const region = (req.query.region || "ua").toString();
+  const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
+  const limit = Math.min(
+    Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
+    60
+  );
+
+  if (!["ua", "tr"].includes(region))
+    return res.status(400).json({ error: "region must be ua|tr" });
+
+  try {
+    const full = await getNewReleasesFull(region);
+    const slice = full.slice(offset, offset + limit);
+    res.json({
+      region,
+      total: full.length,
       offset,
       limit,
       items: slice,
@@ -803,7 +995,7 @@ function deepFindAllStrings(obj, out = []) {
 }
 
 function detectRuFromNextData(nextData) {
-  if (!nextData) return "Нет данных";
+  if (!nextData) return "Нет русского";
 
   const strings = deepFindAllStrings(nextData).map((s) => s.toLowerCase());
 
@@ -811,7 +1003,7 @@ function detectRuFromNextData(nextData) {
     strings.some((s) => s.includes("russian") || s.includes("русск")) ||
     strings.some((s) => /\bru\b/.test(s));
 
-  if (!hasRuWord) return "Нет данных";
+  if (!hasRuWord) return "Нет русского";
 
   const hasVoice =
     strings.some(
@@ -841,7 +1033,7 @@ function detectRuSupport($) {
   const hasVoice = t.includes("озвуч") || t.includes("voice");
   const hasSubs = t.includes("субтит") || t.includes("subtitles");
 
-  if (!hasRussianWord) return "Нет данных";
+  if (!hasRussianWord) return "Нет русского";
   if (hasVoice && hasSubs) return "Озвучка и субтитры";
   if (hasVoice) return "Озвучка";
   if (hasSubs) return "Субтитры";
@@ -1036,7 +1228,7 @@ function extractRuSupportAccurate(nextData) {
   const nothingFound = audioLangs.size === 0 && subLangs.size === 0;
   if (nothingFound) return null;
 
-  return "Нет данных";
+  return "Нет русского";
 }
 
 // ======================================================================
@@ -1187,7 +1379,7 @@ app.get("/api/game-details", async (req, res) => {
     if (!ruSupport) {
       const ruAccurate = extractRuSupportAccurate(nextData);
       // если accurate вернул осмысленный результат — берём его
-      if (ruAccurate && ruAccurate !== "Нет данных") {
+      if (ruAccurate) {
         ruSupport = ruAccurate;
       }
     }
@@ -1214,6 +1406,9 @@ app.get("/api/clear-cache", (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, () => {
-  console.log(`Deals proxy running: http://localhost:${PORT}`);
-});
+(async () => {
+  await setupBot(app);
+  app.listen(PORT, () => {
+    console.log(`Deals proxy running: http://localhost:${PORT}`);
+  });
+})();

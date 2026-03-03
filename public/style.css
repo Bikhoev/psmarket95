@@ -25,7 +25,7 @@
 
 body {
   margin: 0;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
   font-size: 16px;
   line-height: 1.65;
   letter-spacing: -0.01em;
@@ -122,6 +122,554 @@ img {
   padding: 0 18px;
 }
 
+.container--narrow {
+  max-width: 560px;
+}
+
+/* ========= НОВЫЙ ЛЕЙАУТ: ВИДЫ И ТАБЫ ========= */
+.main-app {
+  min-height: calc(100vh - 120px);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ========= НИЖНЯЯ ПАНЕЛЬ (как в приложении) ========= */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    to top,
+    rgba(12, 14, 22, 0.98),
+    rgba(12, 14, 22, 0.94)
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.bottom-nav__item {
+  flex: 1;
+  max-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  min-height: 52px;
+}
+
+.bottom-nav__item:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bottom-nav__item--active {
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.bottom-nav__item--active .bottom-nav__icon {
+  transform: scale(1.06);
+  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.35));
+}
+
+.bottom-nav__icon {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+.bottom-nav__icon .bottom-nav__svg {
+  width: 100%;
+  height: 100%;
+}
+
+.bottom-nav__label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Иконки в шапке (компактные) */
+.bottom-nav-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.bottom-nav-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bottom-nav-icon__sym {
+  font-size: 1.15rem;
+}
+
+.bottom-nav-icon__badge,
+.bottom-nav-icon .cart-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-nav-icon .cart-badge {
+  background: var(--accent);
+}
+
+.bottom-nav-icon__badge {
+  background: rgba(236, 72, 153, 0.9);
+}
+
+.bottom-nav-icon__badge:empty,
+.bottom-nav-icon .cart-badge:empty {
+  display: none;
+}
+
+.header--compact .header-inner {
+  padding: 10px 0;
+  gap: 16px;
+}
+
+.header--compact .logo-main {
+  font-size: 1.3rem;
+}
+
+.header-tagline {
+  flex: 1;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .header-tagline {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+/* Скрываем плавающую корзину — корзина в шапке */
+body:has(.bottom-nav) .cart-float-btn {
+  display: none;
+}
+
+.view {
+  padding: 2rem 0 3rem;
+  animation: viewFade 0.25s ease;
+}
+
+.view.hidden {
+  display: none !important;
+}
+
+@keyframes viewFade {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
+.view-title {
+  font-size: 1.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.view-subtitle {
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.view-intro {
+  position: relative;
+  padding: 1.5rem 1.25rem;
+  margin: 0 -0.5rem 1.5rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, rgba(147, 51, 234, 0.04) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-left: 3px solid var(--accent);
+}
+
+.view-intro p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+@media (min-width: 768px) {
+  .view-intro {
+    margin: 0 -1.5rem 1.5rem;
+    padding: 1.75rem 1.5rem;
+  }
+}
+
+/* Hero compact */
+.hero--compact {
+  padding: 2rem 0 !important;
+}
+
+.hero-inner--compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.hero-inner--compact .hero-text h1 {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.hero-inner--compact .hero-text p {
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.6;
+  color: var(--text-soft, rgba(226, 232, 240, 0.9));
+}
+
+.btn-hero {
+  flex-shrink: 0;
+}
+
+/* Catalog tabs */
+.catalog-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 1.5rem;
+  padding: 4px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 14px;
+  width: fit-content;
+}
+
+.catalog-tab {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.catalog-tab:hover {
+  color: var(--text-main);
+}
+
+.catalog-tab--active {
+  background: rgba(59, 130, 246, 0.25);
+  color: #fff;
+}
+
+/* Catalog panels */
+.catalog-panel {
+  display: none;
+}
+
+.catalog-panel--active {
+  display: block;
+}
+
+.panel-header {
+  margin-bottom: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-action-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.panel-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.panel-action-icon {
+  font-size: 1.1rem;
+}
+
+.panel-action-badge,
+.panel-fav-count,
+.panel-cart-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+}
+
+.panel-fav-count {
+  background: rgba(236, 72, 153, 0.9);
+}
+
+.panel-action-badge:empty,
+.panel-fav-count:empty,
+.panel-cart-count:empty {
+  display: none;
+}
+
+.panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.panel-header--row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+/* Nav links (new layout) */
+.nav-link {
+  padding: 8px 16px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--text-main);
+}
+
+.nav-link--active {
+  color: #fff;
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* Override old .nav a for new nav-link style */
+.nav a.nav-link {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.nav a.nav-link::after {
+  display: none;
+}
+
+.nav a.nav-link:hover {
+  transform: none;
+}
+
+/* Info grid (compact) */
+.info-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.info-block h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.info-block ul, .info-block ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.info-block li {
+  margin-bottom: 0.5rem;
+}
+
+.steps--compact {
+  padding-left: 1.2rem;
+}
+
+.steps--compact li {
+  margin-bottom: 0.6rem;
+}
+
+.info-block--contacts .contacts-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.info-block--contacts .contacts-list li {
+  margin-bottom: 0.5rem;
+}
+
+.contact-link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.contact-link:hover {
+  color: var(--accent-2);
+}
+
+.contacts-hours {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+}
+
+.link {
+  color: var(--accent);
+}
+
+/* Footer compact */
+.footer--compact {
+  padding: 1rem 0;
+}
+
+.footer--compact .container {
+  text-align: center;
+}
+
+.footer--compact span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Form inline */
+.form-row--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.form-row--inline .form-group {
+  flex: 1;
+  min-width: 120px;
+}
+
+.form-row--inline .btn-primary {
+  flex-shrink: 0;
+}
+
+.btn-sm {
+  padding: 8px 18px;
+  font-size: 0.9rem;
+}
+
+/* Calculator compact */
+.calculator--compact .result-main {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.calculator--compact .result-details {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.calculator-note {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.calculator-note h4 {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Subs in new layout */
+.view-subscriptions .subs-pricing {
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .hero-inner--compact {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  .btn-hero {
+    width: 100%;
+  }
+  .catalog-tabs {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .catalog-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+}
+
 /* ========= ШАПКА ========= */
 
 .header {
@@ -169,6 +717,39 @@ img {
   color: var(--text-soft);
   text-transform: uppercase;
   letter-spacing: 0.14em;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 12px;
+}
+
+.nav-pill {
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  transition: all 0.2s ease;
+}
+
+.nav-pill:hover {
+  color: #fff;
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.nav-pill.nav-link--active {
+  color: #fff;
+  background: rgba(59, 130, 246, 0.25);
+}
+
+.header-action-btn {
+  width: 40px;
+  height: 40px;
 }
 
 .nav {
@@ -1227,7 +1808,8 @@ body.menu-open {
 }
 
 /* Лоадер в скидках: принудительно flex и по центру */
-#deals .deals-grid:has(.ps-loader-wrap) {
+#deals .deals-grid:has(.ps-loader-wrap),
+#deals .deals-grid:has(.favorites-empty) {
   display: flex !important;
   justify-content: center;
   align-items: center;
@@ -2168,6 +2750,18 @@ section[id] {
 .deals-carousel__page .deals-grid {
   width: 100%;
 }
+.favorites-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 320px);
+  width: 100%;
+  padding: 32px;
+}
+.favorites-empty .deal-meta {
+  text-align: center;
+  font-size: 1.05rem;
+}
 .deals-carousel__nav {
   display: flex;
   align-items: center;
@@ -2394,6 +2988,30 @@ section[id] {
   padding: 0 7px;
   font-size: 12px;
   background: rgba(255, 255, 255, 0.14);
+}
+
+/* Избранное: отдельная страница */
+.fav-page-wrap {
+  position: relative;
+  min-height: 200px;
+}
+.fav-page-grid:has(.ps-loader-wrap) {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  min-height: 260px;
+}
+.fav-page-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 32px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.fav-page-empty.hidden {
+  display: none;
 }
 
 .cart-modal {
@@ -2755,6 +3373,41 @@ section[id] {
   opacity: 0.75;
   margin-left: 2px;
   font-weight: 800;
+}
+
+/* Бейдж предзаказа (без %), оранжево-золотой акцент */
+.deal-badge--preorder::after {
+  content: "";
+}
+
+.deal-badge--preorder {
+  background: linear-gradient(
+    135deg,
+    rgba(234, 88, 12, 0.95),
+    rgba(194, 65, 12, 0.95),
+    rgba(217, 119, 6, 0.9)
+  );
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+/* Секции топ игр и новинок */
+.store-section-head {
+  display: flex;
+  gap: 14px;
+  justify-content: flex-start;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.store-grid-wrap {
+  position: relative;
+}
+
+.store-load-more {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
 }
 
 /* ЦЕНА */
@@ -3741,4 +4394,13 @@ button:focus-visible,
 a:focus-visible {
   outline: 2px solid rgba(96, 165, 250, 0.6);
   outline-offset: 2px;
+}
+
+/* ===== Telegram Mini App safe-area ===== */
+body.tg-mini-app {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 60px);
+}
+body.tg-mini-app .cart-float-btn {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
 }
