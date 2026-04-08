@@ -35,6 +35,25 @@ function getRate(regionKey, basePrice) {
   return isTR ? 6.4 : 6.5; // до 100
 }
 
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeAttr(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+function ampInHtmlAttr(s) {
+  return String(s ?? "").replace(/&/g, "&amp;");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   function closeMenu() {}
 
@@ -333,6 +352,33 @@ document.addEventListener("DOMContentLoaded", () => {
     return cart.reduce((s, it) => s + Number(it.rubPrice || 0), 0);
   }
 
+  function countGamesInCart() {
+    return cart.filter((it) => it.type === "game").length;
+  }
+
+  function multiGameBundleDiscountRub(gameCount) {
+    if (gameCount >= 4) return 500;
+    if (gameCount === 3) return 300;
+    if (gameCount === 2) return 200;
+    return 0;
+  }
+
+  function bundleDiscountLabel(gameCount) {
+    if (gameCount >= 4) return "Скидка за комплект (4+ игр)";
+    if (gameCount === 3) return "Скидка за комплект (3 игры)";
+    if (gameCount === 2) return "Скидка за комплект (2 игры)";
+    return "";
+  }
+
+  function calcCartTotals() {
+    const subtotal = calcCartSum();
+    const gameCount = countGamesInCart();
+    const discountRaw = multiGameBundleDiscountRub(gameCount);
+    const discount = Math.min(discountRaw, Math.max(0, subtotal));
+    const payable = Math.max(0, subtotal - discount);
+    return { subtotal, gameCount, discount, payable };
+  }
+
   function updateMiniCartBar() {
     // если есть плавающая кнопка корзины — мини-панель не показываем
     if (cartFloatBtn) return;
@@ -344,10 +390,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const sum = calcCartSum();
+    const { payable } = calcCartTotals();
 
     if (miniCartCountEl) miniCartCountEl.textContent = String(cart.length);
-    if (miniCartSumEl) miniCartSumEl.textContent = String(sum);
+    if (miniCartSumEl) miniCartSumEl.textContent = String(payable);
 
     miniCartBar.classList.remove("hidden");
     miniCartBar.style.display = ""; // ✅ показываем только когда есть товары
@@ -497,11 +543,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cart.length === 0) {
       cartEmpty.style.display = "block";
       cartTotal.textContent = "0";
+      const bd = document.getElementById("cartBreakdown");
+      const dr = document.getElementById("cartDiscountRow");
+      if (bd) bd.hidden = true;
+      if (dr) dr.hidden = true;
       updateMiniCartBar();
       return;
     }
 
     cartEmpty.style.display = "none";
+
+    const cartBreakdown = document.getElementById("cartBreakdown");
+    const cartSubtotalEl = document.getElementById("cartSubtotal");
+    const cartDiscountRow = document.getElementById("cartDiscountRow");
+    const cartDiscountLabel = document.getElementById("cartDiscountLabel");
+    const cartDiscountAmount = document.getElementById("cartDiscountAmount");
 
     let sum = 0;
     for (const it of cart) {
@@ -526,8 +582,8 @@ document.addEventListener("DOMContentLoaded", () => {
       el.innerHTML = `
         ${imgHtml}
         <div>
-          <div class="cart-item-title">${title}</div>
-          <div class="cart-item-meta">${meta}</div>
+          <div class="cart-item-title">${escapeHtml(title)}</div>
+          <div class="cart-item-meta">${escapeHtml(meta)}</div>
           <button class="cart-remove" type="button">Удалить</button>
         </div>
         <div class="cart-item-price">${Number(it.rubPrice || 0)} ₽</div>
@@ -540,7 +596,22 @@ document.addEventListener("DOMContentLoaded", () => {
       cartList.appendChild(el);
     }
 
-    cartTotal.textContent = sum.toFixed(0);
+    const { subtotal, gameCount, discount, payable } = calcCartTotals();
+
+    if (cartBreakdown && cartSubtotalEl) {
+      cartSubtotalEl.textContent = String(subtotal);
+      const showBreakdown = discount > 0;
+      cartBreakdown.hidden = !showBreakdown;
+      if (cartDiscountRow && cartDiscountLabel && cartDiscountAmount) {
+        cartDiscountRow.hidden = !showBreakdown;
+        if (showBreakdown) {
+          cartDiscountLabel.textContent = bundleDiscountLabel(gameCount);
+          cartDiscountAmount.textContent = String(discount);
+        }
+      }
+    }
+
+    cartTotal.textContent = String(payable);
     updateMiniCartBar();
   }
 
@@ -574,14 +645,18 @@ document.addEventListener("DOMContentLoaded", () => {
       return `${idx + 1}) ${title} — ${price} (${region})${url}`;
     });
 
-    const total = cart.reduce((s, it) => s + (it.rubPrice || 0), 0);
+    const { subtotal, discount, payable, gameCount } = calcCartTotals();
+    const discountNote =
+      discount > 0
+        ? `\n\nСумма по позициям: ${subtotal} ₽\n${bundleDiscountLabel(gameCount)}: −${discount} ₽`
+        : "";
 
     const msg = `Здравствуйте!
 Хочу оформить заказ:
 
-${lines.join("\n\n")}
+${lines.join("\n\n")}${discountNote}
 
-Итого: ${total} ₽`;
+Итого к оплате: ${payable} ₽`;
 
     const waUrl =
       "https://wa.me/" + WHATSAPP_PHONE + "?text=" + encodeURIComponent(msg);
@@ -694,14 +769,16 @@ ${lines.join("\n\n")}
     if (!items || items.length === 0) return "<div class='deal-meta'>Нет данных.</div>";
     return items
       .map((it) => {
-        const title = String(it.title || "").replace(/"/g, "&quot;");
+        const titleText = String(it.title || "");
+        const titleAttr = escapeAttr(titleText);
+        const titleHtml = escapeHtml(titleText);
         const img = it.img || "";
         const coverHtml = img
-          ? `<img class="psplus-cover" src="${img}" alt="${title}" loading="lazy" />`
-          : `<div class="psplus-cover psplus-cover--placeholder" aria-label="${title}"><span class="psplus-cover-placeholder-text">PS</span></div>`;
+          ? `<img class="psplus-cover" src="${ampInHtmlAttr(img)}" alt="${titleAttr}" loading="lazy" />`
+          : `<div class="psplus-cover psplus-cover--placeholder" aria-label="${titleAttr}"><span class="psplus-cover-placeholder-text">PS</span></div>`;
         return `<article class="psplus-card">
   ${coverHtml}
-  <div class="psplus-title" title="${title}">${title}</div>
+  <div class="psplus-title" title="${titleAttr}">${titleHtml}</div>
 </article>`;
       })
       .join("");
@@ -864,7 +941,7 @@ ${lines.join("\n\n")}
         catalogPrefetchCache.set(pKey, { promise });
       }
     } catch (e) {
-      const errHtml = `<div class='deal-meta'>Не удалось загрузить каталог: ${e.message}</div>`;
+      const errHtml = `<div class='deal-meta'>Не удалось загрузить каталог: ${escapeHtml(e.message)}</div>`;
       if (psplusCatalogCarouselTrack) {
         catalogPages = [errHtml];
         renderCatalogCarousel();
@@ -1349,7 +1426,7 @@ ${lines.join("\n\n")}
     null;
 
   let dealsRegion = "ua"; // ua | tr
-  let dealsSort = "popular"; // popular | discount | new
+  let dealsSort = "popular"; // popular | discount | price
   let dealsOffset = 0;
   const DEALS_LIMIT = 24;
   const FAVORITES_LIMIT = 12;
@@ -1406,7 +1483,7 @@ ${lines.join("\n\n")}
       const html = buildStoreCardsHtmlWithRegions(favItems);
       favPageGrid.innerHTML = html || "";
     } catch (e) {
-      favPageGrid.innerHTML = `<div class="deal-meta">Ошибка: ${e.message}</div>`;
+      favPageGrid.innerHTML = `<div class="deal-meta">Ошибка: ${escapeHtml(e.message)}</div>`;
     }
     updateFavButtonsState();
     updateDealBuyButtonsState();
@@ -1554,7 +1631,7 @@ ${lines.join("\n\n")}
       dealsSearchActive = false;
 
       fetchDealsPage({ reset: true }).catch((e) => {
-        setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`);
+        setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${escapeHtml(e.message)}</div>`);
       });
 
       syncDealsControls();
@@ -1686,74 +1763,7 @@ ${lines.join("\n\n")}
       return;
     }
 
-    const cards = items
-      .map((it) => {
-        const meta =
-          it.discountPercent != null
-            ? `-${it.discountPercent}% • ${it.psOffer}`
-            : it.psOffer;
-
-        const safeTitle = (it.title || "").replace(/"/g, "&quot;");
-        const img = makeHiResImg(it.img, 720);
-
-        const favActive = isFavorite(it.url) ? "fav-btn--active" : "";
-        const inCart = isInCart(dealsRegion, it.url);
-        const buyClass = inCart ? "deal-buy--in-cart" : "";
-        const buyText = inCart ? "В корзине" : "Купить";
-
-        return `
-<article class="deal-card"
-  data-url="${it.url}"
-  data-title="${safeTitle}"
-  data-img="${img}"
-  data-rub="${it.rubPrice}">
-  <div class="deal-media">
-
-    <button class="fav-btn ${favActive}" type="button"
-      aria-label="Добавить в избранное"
-      data-action="toggle-fav"
-      data-url="${it.url}">
-      ♥
-    </button>
-
-    <img class="deal-img"
-      src="${makeHiResImg(it.img, 720)}"
-      srcset="${buildSrcset(it.img)}"
-      sizes="(max-width: 800px) 50vw, 16vw"
-      alt="${safeTitle}"
-      loading="lazy"
-    />
-    ${
-      it.discountPercent != null
-        ? `<div class="deal-badge">-${it.discountPercent}</div>`
-        : ``
-    }
-  </div>
-
-  <div class="deal-body">
-    <div class="deal-title" title="${safeTitle}">${it.title}</div>
-
-    <div class="deal-priceRow">
-      <div class="deal-rub">${it.rubPrice} ₽</div>
-      <div class="deal-ps">${meta || ""}</div>
-    </div>
-
-    <div class="deal-actions">
-      <button class="deal-btn deal-buy ${buyClass}" type="button" aria-pressed="${inCart ? "true" : "false"}"
-        data-action="add-to-cart"
-        data-title="${safeTitle}"
-        data-img="${img}"
-        data-url="${it.url}"
-        data-rub="${it.rubPrice}"
-        data-region="${dealsRegion}">
-        ${buyText}
-      </button>
-    </div>
-  </div>
-</article>
-`;
-      })
-      .join("");
+    const cards = buildDealsCardsHtml(items);
 
     if (dealsCarouselTrack) {
       dealsPages = [cards];
@@ -1812,58 +1822,7 @@ ${lines.join("\n\n")}
     const chunks = [];
     for (let i = 0; i < shown.length; i += FAVORITES_LIMIT) {
       const slice = shown.slice(i, i + FAVORITES_LIMIT);
-      const cards = slice
-        .map((it) => {
-          const meta =
-            it.discountPercent != null
-              ? `-${it.discountPercent}% • ${it.psOffer}`
-              : it.psOffer;
-          const safeTitle = (it.title || "").replace(/"/g, "&quot;");
-          const img = makeHiResImg(it.img, 720);
-          const favActive = isFavorite(it.url) ? "fav-btn--active" : "";
-          const inCart = isInCart(dealsRegion, it.url);
-          const buyClass = inCart ? "deal-buy--in-cart" : "";
-          const buyText = inCart ? "В корзине" : "Купить";
-          return `
-<article class="deal-card"
-  data-url="${it.url}"
-  data-title="${safeTitle}"
-  data-img="${img}"
-  data-rub="${it.rubPrice}">
-  <div class="deal-media">
-    <button class="fav-btn ${favActive}" type="button"
-      aria-label="Добавить в избранное"
-      data-action="toggle-fav"
-      data-url="${it.url}">♥</button>
-    <img class="deal-img"
-      src="${makeHiResImg(it.img, 720)}"
-      srcset="${buildSrcset(it.img)}"
-      sizes="(max-width: 800px) 50vw, 16vw"
-      alt="${safeTitle}"
-      loading="lazy"
-    />
-    ${it.discountPercent != null ? `<div class="deal-badge">-${it.discountPercent}</div>` : ""}
-  </div>
-  <div class="deal-body">
-    <div class="deal-title" title="${safeTitle}">${it.title}</div>
-    <div class="deal-priceRow">
-      <div class="deal-rub">${it.rubPrice} ₽</div>
-      <div class="deal-ps">${meta || ""}</div>
-    </div>
-    <div class="deal-actions">
-      <button class="deal-btn deal-buy ${buyClass}" type="button" aria-pressed="${inCart ? "true" : "false"}"
-        data-action="add-to-cart"
-        data-title="${safeTitle}"
-        data-img="${img}"
-        data-url="${it.url}"
-        data-rub="${it.rubPrice}"
-        data-region="${dealsRegion}">${buyText}</button>
-    </div>
-  </div>
-</article>`;
-        })
-        .join("");
-      chunks.push(cards);
+      chunks.push(buildDealsCardsHtml(slice));
     }
 
     dealsTotalFromApi = 0;
@@ -1896,7 +1855,7 @@ ${lines.join("\n\n")}
       }
 
       fetchDealsPage({ reset: true }).catch((e) => {
-        setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`);
+        setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${escapeHtml(e.message)}</div>`);
       });
 
       syncDealsControls();
@@ -1934,7 +1893,7 @@ ${lines.join("\n\n")}
 
     fetchDealsPage({ reset: true }).catch((e) => {
       if (dealsGrid)
-        setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`);
+        setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${escapeHtml(e.message)}</div>`);
     });
 
     syncDealsControls();
@@ -2216,17 +2175,23 @@ ${lines.join("\n\n")}
           it.discountPercent != null
             ? `-${it.discountPercent}% • ${it.psOffer}`
             : it.psOffer;
-        const safeTitle = (it.title || "").replace(/"/g, "&quot;");
+        const titleText = String(it.title || "");
+        const titleAttr = escapeAttr(titleText);
+        const titleHtml = escapeHtml(titleText);
+        const metaHtml = escapeHtml(meta || "");
         const img = makeHiResImg(it.img, 720);
+        const imgSrc = ampInHtmlAttr(makeHiResImg(it.img, 720));
+        const imgSrcset = ampInHtmlAttr(buildSrcset(it.img));
+        const urlAttr = escapeAttr(it.url || "");
         const favActive = isFavorite(it.url) ? "fav-btn--active" : "";
         const inCart = isInCart(dealsRegion, it.url);
         const buyClass = inCart ? "deal-buy--in-cart" : "";
         const buyText = inCart ? "В корзине" : "Купить";
         return `
 <article class="deal-card"
-  data-url="${it.url}"
-  data-title="${safeTitle}"
-  data-img="${img}"
+  data-url="${urlAttr}"
+  data-title="${titleAttr}"
+  data-img="${ampInHtmlAttr(img)}"
   data-rub="${it.rubPrice}"
   data-region="${dealsRegion}"
   data-discount="${it.discountPercent != null ? "1" : ""}">
@@ -2234,28 +2199,28 @@ ${lines.join("\n\n")}
     <button class="fav-btn ${favActive}" type="button"
       aria-label="Добавить в избранное"
       data-action="toggle-fav"
-      data-url="${it.url}">♥</button>
+      data-url="${urlAttr}">♥</button>
     <img class="deal-img"
-      src="${makeHiResImg(it.img, 720)}"
-      srcset="${buildSrcset(it.img)}"
+      src="${imgSrc}"
+      srcset="${imgSrcset}"
       sizes="(max-width: 800px) 50vw, 16vw"
-      alt="${safeTitle}"
+      alt="${titleAttr}"
       loading="lazy"
     />
     ${it.discountPercent != null ? `<div class="deal-badge">-${it.discountPercent}</div>` : ""}
   </div>
   <div class="deal-body">
-    <div class="deal-title" title="${safeTitle}">${it.title}</div>
+    <div class="deal-title" title="${titleAttr}">${titleHtml}</div>
     <div class="deal-priceRow">
       <div class="deal-rub">${it.rubPrice} ₽</div>
-      <div class="deal-ps">${meta || ""}</div>
+      <div class="deal-ps">${metaHtml}</div>
     </div>
     <div class="deal-actions">
       <button class="deal-btn deal-buy ${buyClass}" type="button" aria-pressed="${inCart ? "true" : "false"}"
         data-action="add-to-cart"
-        data-title="${safeTitle}"
-        data-img="${img}"
-        data-url="${it.url}"
+        data-title="${titleAttr}"
+        data-img="${ampInHtmlAttr(img)}"
+        data-url="${urlAttr}"
         data-rub="${it.rubPrice}"
         data-region="${dealsRegion}">${buyText}</button>
     </div>
@@ -2275,14 +2240,21 @@ ${lines.join("\n\n")}
 
   // Карточки для Top Games и New Releases (с бейджем предзаказа)
   function buildStoreCardsHtml(items, region) {
+    const regionAttr = escapeAttr(String(region ?? ""));
     return (items || [])
       .map((it) => {
         const meta =
           it.discountPercent != null
             ? `-${it.discountPercent}% • ${it.psOffer}`
             : it.psOffer;
-        const safeTitle = (it.title || "").replace(/"/g, "&quot;");
+        const titleText = String(it.title || "");
+        const titleAttr = escapeAttr(titleText);
+        const titleHtml = escapeHtml(titleText);
+        const metaHtml = escapeHtml(meta || "");
         const img = makeHiResImg(it.img, 720);
+        const imgSrc = ampInHtmlAttr(makeHiResImg(it.img, 720));
+        const imgSrcset = ampInHtmlAttr(buildSrcset(it.img));
+        const urlAttr = escapeAttr(it.url || "");
         const favActive = isFavorite(it.url) ? "fav-btn--active" : "";
         const inCart = isInCart(region, it.url);
         const buyClass = inCart ? "deal-buy--in-cart" : "";
@@ -2295,41 +2267,41 @@ ${lines.join("\n\n")}
         const rubDisplay = it.rubPrice === 0 ? "Бесплатно" : `${it.rubPrice} ₽`;
         return `
 <article class="deal-card"
-  data-url="${it.url}"
-  data-title="${safeTitle}"
-  data-img="${img}"
+  data-url="${urlAttr}"
+  data-title="${titleAttr}"
+  data-img="${ampInHtmlAttr(img)}"
   data-rub="${it.rubPrice}"
-  data-region="${region}"
+  data-region="${regionAttr}"
   data-preorder="${it.isPreOrder ? "1" : ""}"
   data-discount="${it.discountPercent != null ? "1" : ""}">
   <div class="deal-media">
     <button class="fav-btn ${favActive}" type="button"
       aria-label="Добавить в избранное"
       data-action="toggle-fav"
-      data-url="${it.url}">♥</button>
+      data-url="${urlAttr}">♥</button>
     <img class="deal-img"
-      src="${makeHiResImg(it.img, 720)}"
-      srcset="${buildSrcset(it.img)}"
+      src="${imgSrc}"
+      srcset="${imgSrcset}"
       sizes="(max-width: 800px) 50vw, 16vw"
-      alt="${safeTitle}"
+      alt="${titleAttr}"
       loading="lazy"
     />
     ${badge}
   </div>
   <div class="deal-body">
-    <div class="deal-title" title="${safeTitle}">${it.title}</div>
+    <div class="deal-title" title="${titleAttr}">${titleHtml}</div>
     <div class="deal-priceRow">
       <div class="deal-rub">${rubDisplay}</div>
-      <div class="deal-ps">${meta || ""}</div>
+      <div class="deal-ps">${metaHtml}</div>
     </div>
     <div class="deal-actions">
       <button class="deal-btn deal-buy ${buyClass}" type="button" aria-pressed="${inCart ? "true" : "false"}"
         data-action="add-to-cart"
-        data-title="${safeTitle}"
-        data-img="${img}"
-        data-url="${it.url}"
+        data-title="${titleAttr}"
+        data-img="${ampInHtmlAttr(img)}"
+        data-url="${urlAttr}"
         data-rub="${it.rubPrice}"
-        data-region="${region}">${buyText}</button>
+        data-region="${regionAttr}">${buyText}</button>
     </div>
   </div>
 </article>`;
@@ -2524,7 +2496,7 @@ ${lines.join("\n\n")}
       }
 
       fetchDealsPage({ reset: true }).catch((e) => {
-        setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${e.message}</div>`);
+        setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${escapeHtml(e.message)}</div>`);
       });
     });
   }
@@ -2568,12 +2540,12 @@ ${lines.join("\n\n")}
         .then(() => scrollToDealsSection())
         .catch((e) => {
           if (dealsCarouselTrack) {
-            dealsPages = [`<div class='deal-meta'>Ошибка: ${e.message}</div>`];
+            dealsPages = [`<div class='deal-meta'>Ошибка: ${escapeHtml(e.message)}</div>`];
             renderDealsCarousel();
           } else if (dealsGrid) {
         dealsGrid.insertAdjacentHTML(
           "beforeend",
-          `<div class='deal-meta'>Ошибка: ${e.message}</div>`
+          `<div class='deal-meta'>Ошибка: ${escapeHtml(e.message)}</div>`
         );
           }
       });
@@ -2605,7 +2577,7 @@ ${lines.join("\n\n")}
     }
 
     if (lastErr) {
-      setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${lastErr.message}</div>`);
+      setDealsErrorHtml(`<div class='deal-meta'>Ошибка загрузки: ${escapeHtml(lastErr.message)}</div>`);
     }
   }
 
@@ -2654,7 +2626,7 @@ ${lines.join("\n\n")}
           topGamesOffset < topGamesTotal ? "inline-block" : "none";
       }
     } catch (e) {
-      topGamesGrid.innerHTML = `<div class='deal-meta'>Ошибка: ${e.message}</div>`;
+      topGamesGrid.innerHTML = `<div class='deal-meta'>Ошибка: ${escapeHtml(e.message)}</div>`;
       if (topGamesMoreBtn) topGamesMoreBtn.style.display = "none";
     }
   }
@@ -2720,7 +2692,7 @@ ${lines.join("\n\n")}
           newReleasesOffset < newReleasesTotal ? "inline-block" : "none";
       }
     } catch (e) {
-      newReleasesGrid.innerHTML = `<div class='deal-meta'>Ошибка: ${e.message}</div>`;
+      newReleasesGrid.innerHTML = `<div class='deal-meta'>Ошибка: ${escapeHtml(e.message)}</div>`;
       if (newReleasesMoreBtn) newReleasesMoreBtn.style.display = "none";
     }
   }

@@ -15,7 +15,6 @@
     />
 
     <link rel="stylesheet" href="../style.css" />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       body.tg-mini-app {
         padding-top: env(safe-area-inset-top, 0px);
@@ -95,7 +94,8 @@
               <label class="subs-type-label" for="dealsSort">Сортировка</label>
               <select id="dealsSort" class="subs-type">
                 <option value="popular">По популярности</option>
-                <option value="discount">По скидке</option>
+                <option value="discount">По размеру скидки</option>
+                <option value="price">Цена: по возрастанию</option>
               </select>
               <button class="cart-icon-btn" id="cartOpenBtn" type="button" aria-label="Открыть корзину">
                 <span class="cart-ico" aria-hidden="true">🛒</span>
@@ -199,8 +199,8 @@
                 </div>
                 <div class="subs-lines">
                   <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="1 месяц" data-price="1190"><span>1 месяц</span><strong>1190₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="3 месяца" data-price="2190"><span>3 месяца</span><strong>2190₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="12 месяцев" data-price="4690"><span>12 месяцев</span><strong>4690₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="3 месяца" data-price="2090"><span>3 месяца</span><strong>2090₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Основная" data-period="12 месяцев" data-price="4090"><span>12 месяцев</span><strong>4090₽</strong></div>
                 </div>
               </div>
 
@@ -217,9 +217,9 @@
                   <div class="subs-badge">UA</div>
                 </div>
                 <div class="subs-lines">
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="1 месяц" data-price="1590"><span>1 месяц</span><strong>1590₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="3 месяца" data-price="3290"><span>3 месяца</span><strong>3290₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="12 месяцев" data-price="6890"><span>12 месяцев</span><strong>6890₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="1 месяц" data-price="1690"><span>1 месяц</span><strong>1690₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="3 месяца" data-price="3190"><span>3 месяца</span><strong>3190₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Экстра" data-period="12 месяцев" data-price="6290"><span>12 месяцев</span><strong>6290₽</strong></div>
                 </div>
               </div>
 
@@ -236,9 +236,9 @@
                   <div class="subs-badge">UA</div>
                 </div>
                 <div class="subs-lines">
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="1 месяц" data-price="1690"><span>1 месяц</span><strong>1690₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="3 месяца" data-price="3590"><span>3 месяца</span><strong>3590₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="12 месяцев" data-price="7890"><span>12 месяцев</span><strong>7890₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="1 месяц" data-price="1790"><span>1 месяц</span><strong>1790₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="3 месяца" data-price="3490"><span>3 месяца</span><strong>3490₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Европа (UA)" data-plan="Люкс" data-period="12 месяцев" data-price="7290"><span>12 месяцев</span><strong>7290₽</strong></div>
                 </div>
               </div>
 
@@ -277,8 +277,8 @@
                 </div>
                 <div class="subs-lines">
                   <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Essential" data-period="1 месяц" data-price="1290"><span>1 месяц</span><strong>1290₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Essential" data-period="3 месяца" data-price="2390"><span>3 месяца</span><strong>2390₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Essential" data-period="12 месяцев" data-price="6190"><span>12 месяцев</span><strong>6190₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Essential" data-period="3 месяца" data-price="2290"><span>3 месяца</span><strong>2290₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Essential" data-period="12 месяцев" data-price="5590"><span>12 месяцев</span><strong>5590₽</strong></div>
                 </div>
               </div>
 
@@ -295,9 +295,9 @@
                   <div class="subs-badge">TR</div>
                 </div>
                 <div class="subs-lines">
-                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="1 месяц" data-price="1590"><span>1 месяц</span><strong>1590₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="3 месяца" data-price="3490"><span>3 месяца</span><strong>3490₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="12 месяцев" data-price="10290"><span>12 месяцев</span><strong>10290₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="1 месяц" data-price="1690"><span>1 месяц</span><strong>1690₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="3 месяца" data-price="3390"><span>3 месяца</span><strong>3390₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Extra" data-period="12 месяцев" data-price="9190"><span>12 месяцев</span><strong>9190₽</strong></div>
                 </div>
               </div>
 
@@ -314,9 +314,9 @@
                   <div class="subs-badge">TR</div>
                 </div>
                 <div class="subs-lines">
-                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="1 месяц" data-price="1790"><span>1 месяц</span><strong>1790₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="3 месяца" data-price="4090"><span>3 месяца</span><strong>4090₽</strong></div>
-                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="12 месяцев" data-price="11890"><span>12 месяцев</span><strong>11890₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="1 месяц" data-price="1890"><span>1 месяц</span><strong>1890₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="3 месяца" data-price="3990"><span>3 месяца</span><strong>3990₽</strong></div>
+                  <div class="subs-line" role="button" tabindex="0" data-region="Турция" data-plan="Deluxe" data-period="12 месяцев" data-price="10490"><span>12 месяцев</span><strong>10490₽</strong></div>
                 </div>
               </div>
 
@@ -385,6 +385,16 @@
           <div id="cartEmpty" class="cart-empty">Корзина пустая</div>
         </div>
         <div class="cart-foot">
+          <div class="cart-breakdown" id="cartBreakdown" hidden>
+            <div class="cart-breakdown__row">
+              <span>Сумма по позициям</span>
+              <span><span id="cartSubtotal">0</span> ₽</span>
+            </div>
+            <div class="cart-breakdown__row cart-breakdown__row--discount" id="cartDiscountRow" hidden>
+              <span id="cartDiscountLabel">Скидка</span>
+              <span>−<span id="cartDiscountAmount">0</span> ₽</span>
+            </div>
+          </div>
           <div class="cart-total">Итого: <strong><span id="cartTotal">0</span> ₽</strong></div>
           <button class="btn-primary" id="cartWhatsappBtn" type="button">Оформить в WhatsApp</button>
           <button class="btn-secondary" id="cartClearBtn" type="button">Очистить</button>
@@ -397,7 +407,6 @@
       <span class="cart-badge" id="cartFloatCount"></span>
     </button>
 
-    <script src="app.js"></script>
     <script src="../script.js" defer></script>
   </body>
 </html>

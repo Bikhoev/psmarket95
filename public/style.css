@@ -1614,12 +1614,12 @@ body.menu-open {
 /* ========= ПРАЙС ПОДПИСОК ========= */
 
 .subs-pricing {
-  margin-top: 18px;
-  padding: 18px 16px 16px;
-  border-radius: 22px;
+  margin-top: 14px;
+  padding: 14px 12px 14px;
+  border-radius: 18px;
   background: rgba(15, 23, 42, 0.96);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
 }
 
 .subs-head {
@@ -1884,21 +1884,22 @@ body.menu-open {
 
 .subs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
 }
 
 .subs-card {
   position: relative;
-  border-radius: 18px;
-  padding: 14px 14px 12px;
+  border-radius: 14px;
+  padding: 10px 11px 10px;
   background: linear-gradient(
-    145deg,
-    rgba(15, 23, 42, 0.96),
-    rgba(15, 23, 42, 0.92)
+    160deg,
+    rgba(15, 23, 42, 0.98),
+    rgba(15, 23, 42, 0.94)
   );
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
   overflow: hidden;
   transition: transform var(--transition-fast),
     border-color var(--transition-fast), box-shadow var(--transition-fast);
@@ -1911,17 +1912,18 @@ body.menu-open {
   pointer-events: none;
   background: radial-gradient(
     circle at top left,
-    rgba(59, 130, 246, 0.2),
-    transparent 60%
+    rgba(59, 130, 246, 0.16),
+    transparent 55%
   );
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
 
 .subs-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(96, 165, 250, 0.55);
-  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.95);
+  transform: translateY(-2px);
+  border-color: rgba(96, 165, 250, 0.45);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(96, 165, 250, 0.12) inset;
 }
 
 .subs-card:hover::before {
@@ -1932,13 +1934,13 @@ body.menu-open {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .subs-name {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.94rem;
   letter-spacing: 0.01em;
 }
 
@@ -2033,13 +2035,13 @@ body.menu-open {
 }
 
 .subs-badge {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  padding: 4px 10px;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(2, 6, 23, 0.5);
   color: #e5e7eb;
 }
 
@@ -2078,24 +2080,60 @@ body.menu-open {
 
 .subs-lines {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .subs-line {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(2, 6, 23, 0.45);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 11px 8px 12px;
+  border-radius: 11px;
+  box-sizing: border-box;
+  cursor: pointer;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07),
+    rgba(255, 255, 255, 0.035)
+  );
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease,
+    color 0.18s ease, transform 0.12s ease;
 }
 
-.subs-line strong {
-  color: var(--text-main);
+.subs-line > span {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.subs-line > strong {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.92rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
+}
+
+/* стрелка «можно нажать» */
+.subs-line::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  margin-left: 2px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  opacity: 0.38;
 }
 
 .subs-note {
@@ -2457,20 +2495,70 @@ html {
     transform: none;
   }
 }
-/* Строки прайса подписок — при нажатии/выборе: зелёная обводка и подсветка */
-.subs-line {
-  cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+/* Строки прайса подписок — фокус и hover */
+.subs-line:focus {
+  outline: none;
 }
 
-/* Нажатие и выбрано (в корзине): тёмный бирюзовый фон + зелёная обводка + зелёное свечение */
+.subs-line:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.75);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .subs-line:hover:not(.subs-line--in-cart) {
+    border-color: rgba(96, 165, 250, 0.55);
+    background: linear-gradient(
+      180deg,
+      rgba(59, 130, 246, 0.2),
+      rgba(30, 41, 59, 0.92)
+    );
+    color: #f1f5f9;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(96, 165, 250, 0.15) inset;
+    transform: translateY(-1px);
+  }
+
+  .subs-line:hover:not(.subs-line--in-cart)::after {
+    opacity: 0.65;
+  }
+
+  .subs-line:hover:not(.subs-line--in-cart) > strong {
+    color: #fff;
+  }
+}
+
+/* Нажатие и выбрано (в корзине) */
+.subs-line:active:not(.subs-line--in-cart) {
+  transform: scale(0.99);
+}
+
 .subs-line:active,
 .subs-line.subs-line--in-cart {
-  border-color: rgba(50, 132, 123, 0.95);
-  background: rgba(24, 44, 49, 0.95);
-  box-shadow: 0 0 12px rgba(50, 132, 123, 0.35), 0 0 24px rgba(50, 132, 123, 0.15);
+  border-color: rgba(52, 211, 153, 0.75);
+  background: linear-gradient(
+    180deg,
+    rgba(16, 185, 129, 0.22),
+    rgba(15, 45, 42, 0.95)
+  );
+  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.25) inset,
+    0 4px 16px rgba(16, 185, 129, 0.2);
   color: rgba(255, 255, 255, 0.98);
 }
+
+.subs-line.subs-line--in-cart::after {
+  content: "✓";
+  width: auto;
+  height: auto;
+  border: none;
+  transform: none;
+  font-size: 0.75rem;
+  font-weight: 800;
+  opacity: 0.95;
+  color: rgba(167, 243, 208, 0.98);
+  margin-left: 4px;
+}
+
 .subs-line:active strong,
 .subs-line.subs-line--in-cart strong {
   color: #fff;
@@ -2598,38 +2686,71 @@ section[id] {
 .modal-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.62);
-  backdrop-filter: blur(6px);
+  background: linear-gradient(
+    165deg,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(15, 23, 42, 0.55) 100%
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .modal-panel {
   position: relative;
-  margin: 4vh auto;
+  margin: max(3vh, 16px) auto;
   width: min(720px, 92vw);
-  background: rgba(15, 23, 42, 0.96);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 20px;
-  padding: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  max-height: min(92vh, 900px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(
+    165deg,
+    rgba(24, 32, 54, 0.98) 0%,
+    rgba(15, 23, 42, 0.97) 45%,
+    rgba(12, 18, 36, 0.98) 100%
+  );
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 22px;
+  padding: 18px 18px 20px;
+  padding-top: 48px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 24px 80px rgba(0, 0, 0, 0.6), 0 0 48px rgba(59, 130, 246, 0.08);
 }
 
 .modal-close {
   position: absolute;
-  right: 12px;
-  top: 10px;
-  width: 36px;
-  height: 36px;
+  right: 14px;
+  top: 14px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(248, 250, 252, 0.92);
+  font-size: 18px;
+  line-height: 1;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.modal-close:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.85);
+  outline-offset: 2px;
 }
 
 .modal-head {
   display: grid;
   grid-template-columns: 160px 1fr;
-  gap: 14px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -2638,46 +2759,64 @@ section[id] {
   aspect-ratio: 1 / 1;
   border-radius: 16px;
   object-fit: cover;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: rgba(248, 250, 252, 0.98);
 }
 
 .modal-price {
-  margin-top: 6px;
-  font-size: 16px;
-  opacity: 0.9;
+  margin-top: 8px;
+  font-size: 17px;
+  opacity: 0.92;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(226, 232, 240, 0.95);
 }
 
 .modal-buy {
   display: inline-block;
   margin-top: 12px;
-  padding: 12px 14px;
+  padding: 12px 20px;
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.35),
+    rgba(59, 130, 246, 0.28)
+  );
   color: #fff;
   text-decoration: none;
   font-weight: 800;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+  transition: transform 0.12s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.modal-buy:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 6px 22px rgba(59, 130, 246, 0.28);
 }
 
 .modal-cards {
-  margin-top: 14px;
+  margin-top: 18px;
   display: grid;
   gap: 12px;
 }
 
 .info-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 16px;
-  padding: 12px 12px;
+  padding: 14px 14px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
 }
 
 .info-row {
@@ -2699,11 +2838,24 @@ section[id] {
 }
 
 @media (max-width: 560px) {
+  .modal-panel {
+    margin: 12px auto;
+    padding: 14px 14px 16px;
+    padding-top: 46px;
+    border-radius: 18px;
+  }
+
   .modal-head {
     grid-template-columns: 120px 1fr;
+    gap: 12px;
   }
+
   .modal-cover {
     width: 120px;
+  }
+
+  .modal-title {
+    font-size: 17px;
   }
 }
 #dealModalRelease {
@@ -3139,6 +3291,39 @@ section[id] {
   text-decoration: underline;
 }
 
+.cart-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  font-size: 0.88rem;
+}
+
+.cart-breakdown__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  color: rgba(226, 232, 240, 0.88);
+}
+
+.cart-breakdown__row--discount {
+  color: rgba(167, 243, 208, 0.95);
+  font-weight: 600;
+}
+
+.cart-breakdown__row--discount span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-total {
+  font-size: 1.05rem;
+  padding-top: 2px;
+}
+
 .cart-foot {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 12px;
@@ -3174,6 +3359,118 @@ section[id] {
 @media (max-width: 800px) {
   .deals-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Карточки игр: компактнее и аккуратнее на телефонах */
+@media (max-width: 768px) {
+  .deals-grid {
+    gap: 9px;
+  }
+
+  .deal-card {
+    border-radius: 14px;
+    border-color: rgba(255, 255, 255, 0.11);
+    background: rgba(255, 255, 255, 0.045);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22),
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .deal-body {
+    padding: 7px 8px 8px;
+    gap: 5px;
+  }
+
+  .deal-title {
+    font-size: 12.5px;
+    min-height: 0;
+    line-height: 1.28;
+    letter-spacing: -0.015em;
+    margin-bottom: -2px;
+  }
+
+  .deal-priceRow {
+    padding: 5px 7px;
+    gap: 2px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(148, 163, 184, 0.12);
+  }
+
+  .deal-rub {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
+  .deal-ps {
+    font-size: 10px;
+    line-height: 1.35;
+    opacity: 0.72;
+  }
+
+  .deal-actions {
+    margin-top: 1px;
+  }
+
+  .deal-btn {
+    height: 36px;
+    min-height: 36px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .deal-badge {
+    left: 7px;
+    bottom: 7px;
+    padding: 5px 8px;
+    font-size: 11px;
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.22),
+      0 1px 6px rgba(0, 0, 0, 0.25);
+  }
+
+  .deal-badge--preorder {
+    font-size: 9.5px;
+    padding: 5px 8px;
+  }
+
+  .fav-btn {
+    top: 6px;
+    right: 6px;
+    width: 31px;
+    height: 31px;
+    font-size: 14px;
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .store-section-head {
+    margin-bottom: 12px;
+  }
+
+  .store-load-more {
+    margin-top: 16px;
+  }
+}
+
+@media (hover: none) and (max-width: 768px) {
+  .deal-card:hover {
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.11);
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .deal-card:hover .deal-media {
+    filter: none;
+  }
+
+  .deal-card:active {
+    transform: scale(0.985);
+    transition: transform 0.08s ease;
   }
 }
 
@@ -3230,7 +3527,8 @@ section[id] {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 34px;
+  min-height: 0;
+  margin-bottom: -3px;
   opacity: 0.95;
 }
 
@@ -3758,11 +4056,15 @@ body {
 /* чуть меньше на маленьких экранах */
 @media (max-width: 420px) {
   .fav-btn {
-    top: 8px;
-    right: 8px;
-    width: 34px;
-    height: 34px;
-    font-size: 16px;
+    top: 5px;
+    right: 5px;
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+
+  .deals-grid {
+    gap: 8px;
   }
 }
 
@@ -4403,4 +4705,47 @@ body.tg-mini-app {
 }
 body.tg-mini-app .cart-float-btn {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
+}
+
+/* ========= Мобильные: чуть светлее фон и сильнее синие блики (без «белой» темы) ========= */
+@media (max-width: 768px) {
+  :root {
+    --bg-main: #070b14;
+    --bg-elevated: #0a0f1c;
+    --accent-soft: rgba(59, 130, 246, 0.38);
+  }
+
+  body {
+    background: radial-gradient(
+        circle at top left,
+        rgba(56, 189, 248, 0.14) 0,
+        transparent 46%
+      ),
+      radial-gradient(
+        circle at 80% 115%,
+        rgba(129, 140, 248, 0.2) 0,
+        transparent 54%
+      ),
+      var(--bg-main);
+  }
+
+  .view-intro {
+    background: linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.09) 0%,
+      rgba(147, 51, 234, 0.06) 100%
+    );
+  }
+
+  .bottom-nav__item--active {
+    background: rgba(59, 130, 246, 0.2);
+  }
+
+  .bottom-nav__item--active .bottom-nav__icon {
+    filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
+  }
+
+  .catalog-tab--active {
+    background: rgba(59, 130, 246, 0.28);
+  }
 }

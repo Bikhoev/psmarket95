@@ -2,14 +2,9 @@ import "dotenv/config";
 import express from "express";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
-import { setupBot } from "./server/bot.js";
-import tgAuthRouter from "./server/routes/tgAuth.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// ===== Body parser (for POST /api/tg/auth) =====
-app.use(express.json());
 
 // ===== Security headers =====
 app.use((req, res, next) => {
@@ -24,14 +19,11 @@ app.use((req, res, next) => {
 // ===== CORS =====
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
-
-// ===== Telegram auth route =====
-app.use("/api/tg", tgAuthRouter);
 
 // ===== Static files =====
 app.use(express.static("public"));
@@ -425,19 +417,19 @@ async function getDealsFull(regionKey, pages = 10) {
   const locale = regionKey === "ua" ? "ru-ua" : "en-tr";
   const dealsUrl = `https://store.playstation.com/${locale}/pages/deals`;
 
-  // 1) берём сам deals (там есть список)
   const firstHtml = await fetchHtml(dealsUrl);
   const $first = cheerio.load(firstHtml);
-  let all = parseDealsList($first, regionKey);
 
-  // 2) дополнительно берём категорию "All deals" (обычно даёт пагинацию)
   let categoryUrl = null;
   $first('a[href*="/category/"][href$="/1"]').each((_, a) => {
     const href = $first(a).attr("href");
     if (href && !categoryUrl) categoryUrl = absUrl(href);
   });
 
+  let all = [];
+
   if (categoryUrl) {
+    // Как на PS Store: полный список скидок идёт с категории постранично — тот же порядок, что на сайте.
     const base = categoryUrl.replace(/\/1$/, "");
     const pageNums = Array.from({ length: pages }, (_, i) => i + 1);
     const pageItems = await mapWithConcurrency(pageNums, 4, async (p) => {
@@ -451,10 +443,11 @@ async function getDealsFull(regionKey, pages = 10) {
       dealsPageCache.set(pageKey, { ts: Date.now(), data: items });
       return items;
     });
-    all = all.concat(pageItems.flat());
+    all = pageItems.flat();
+  } else {
+    all = parseDealsList($first, regionKey);
   }
 
-  // uniq
   const seen = new Set();
   const uniq = [];
   for (const it of all) {
@@ -467,17 +460,32 @@ async function getDealsFull(regionKey, pages = 10) {
   return uniq;
 }
 
-// sort: "popular" | "discount" | "new"
+// popular — порядок как в ленте PS Store; discount — по % скидки; price — по цене в валюте магазина (как «Цена: по возрастанию»)
 function sortItems(items, sortKey) {
+  const indexed = items.map((it, i) => ({ it, i }));
   if (sortKey === "discount") {
-    return [...items].sort(
-      (a, b) => (b.discountPercent ?? -1) - (a.discountPercent ?? -1)
-    );
+    return [...indexed]
+      .sort((a, b) => {
+        const da = a.it.discountPercent ?? -1;
+        const db = b.it.discountPercent ?? -1;
+        if (db !== da) return db - da;
+        return a.i - b.i;
+      })
+      .map(({ it }) => it);
   }
-  if (sortKey === "new") {
-    return [...items]; // порядок с магазина (обычно новое первым)
+  if (sortKey === "price") {
+    return [...indexed]
+      .sort((a, b) => {
+        const pa = Number(a.it.basePrice);
+        const pb = Number(b.it.basePrice);
+        const na = Number.isFinite(pa) ? pa : Infinity;
+        const nb = Number.isFinite(pb) ? pb : Infinity;
+        if (na !== nb) return na - nb;
+        return a.i - b.i;
+      })
+      .map(({ it }) => it);
   }
-  return items;
+  return [...items];
 }
 
 // ===== API =====
@@ -485,7 +493,10 @@ function sortItems(items, sortKey) {
 app.get("/api/deals", async (req, res) => {
   const region = (req.query.region || "ua").toString();
   const pages = Math.min(parseInt(req.query.pages || "10", 10) || 10, 10);
-  const sort = (req.query.sort || "popular").toString(); // popular|discount|new
+  const sortRaw = (req.query.sort || "popular").toString();
+  const sort = ["popular", "discount", "price"].includes(sortRaw)
+    ? sortRaw
+    : "popular";
   const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
   const limit = Math.min(
     Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
@@ -553,6 +564,55 @@ app.get("/api/top-games", async (req, res) => {
   }
 });
 
+// Идентификатор товара в URL PS Store (полные ссылки часто отличаются query/регистром).
+function storeProductKey(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  try {
+    const u = new URL(raw);
+    const path = u.pathname.replace(/\/+$/, "");
+    const m = path.match(/\/(?:product|concept)\/([^/]+)$/i);
+    if (m) return decodeURIComponent(m[1]).toLowerCase();
+    return path.toLowerCase();
+  } catch {
+    const m = raw.match(/\/(?:product|concept)\/([^/?#]+)/i);
+    return m ? decodeURIComponent(m[1]).toLowerCase() : raw.toLowerCase();
+  }
+}
+
+// Новинки: сначала то, чего нет в топе; затем то, что в топе, но не в «голове» списка; в конец — то же, что в первых позициях топа (чтобы первая страница новинок не дублировала топ).
+function reorderNewReleasesAfterTop(latestItems, topItems) {
+  const topList = topItems || [];
+  const topOrder = new Map();
+  topList.forEach((it, i) => {
+    const k = storeProductKey(it.url);
+    if (k && !topOrder.has(k)) topOrder.set(k, i);
+  });
+
+  const topHeadCount = 48;
+  const topHeadKeys = new Set();
+  for (let i = 0; i < Math.min(topHeadCount, topList.length); i++) {
+    const k = storeProductKey(topList[i]?.url);
+    if (k) topHeadKeys.add(k);
+  }
+
+  const notInTop = [];
+  const inTopNotHead = [];
+  const inTopHead = [];
+
+  for (const it of latestItems || []) {
+    const k = storeProductKey(it.url);
+    if (!k || !topOrder.has(k)) {
+      notInTop.push(it);
+      continue;
+    }
+    if (topHeadKeys.has(k)) inTopHead.push(it);
+    else inTopNotHead.push(it);
+  }
+
+  return notInTop.concat(inTopNotHead, inTopHead);
+}
+
 // ===== NEW RELEASES (новинки, предзаказы) =====
 // /api/new-releases?region=ua|tr&offset=0&limit=24
 app.get("/api/new-releases", async (req, res) => {
@@ -567,7 +627,11 @@ app.get("/api/new-releases", async (req, res) => {
     return res.status(400).json({ error: "region must be ua|tr" });
 
   try {
-    const full = await getNewReleasesFull(region);
+    const [latest, top] = await Promise.all([
+      getNewReleasesFull(region),
+      getTopGamesFull(region),
+    ]);
+    const full = reorderNewReleasesAfterTop(latest, top);
     const slice = full.slice(offset, offset + limit);
     res.json({
       region,
@@ -581,10 +645,10 @@ app.get("/api/new-releases", async (req, res) => {
   }
 });
 
-// sort catalog: "popular" | "new"
-function sortCatalogItems(items, sortKey) {
-  if (sortKey === "new") return [...items].reverse();
-  return items;
+// Каталоги PS Plus / EA: порядок как на странице категории в PS Store (без искусственного reverse).
+function sortCatalogItems(items, _sortKey) {
+  void _sortKey;
+  return [...items];
 }
 
 // ===== PS PLUS CATALOG API =====
@@ -671,10 +735,10 @@ app.get("/api/psplus-classics", async (req, res) => {
   }
 });
 
-// /api/eaplay-catalog?region=ua&pages=3&offset=0&limit=24&sort=popular|new
+// /api/eaplay-catalog?region=ua&pages=5&offset=0&limit=24&sort=popular|new
 app.get("/api/eaplay-catalog", async (req, res) => {
   const region = (req.query.region || "ua").toString();
-  const pages = Math.min(parseInt(req.query.pages || "3", 10) || 3, 5);
+  const pages = Math.min(parseInt(req.query.pages || "5", 10) || 5, 10);
   const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
   const limit = Math.min(
     Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
@@ -685,14 +749,12 @@ app.get("/api/eaplay-catalog", async (req, res) => {
   if (!["ua", "tr"].includes(region))
     return res.status(400).json({ error: "region must be ua|tr" });
 
-  // Play List (EA Play) — больше игр: https://store.playstation.com/.../category/74d4e266-5c64-4c61-a7e3-1b6e78f643e6
   const CATEGORY_ID = "74d4e266-5c64-4c61-a7e3-1b6e78f643e6";
-  const pagesParam = Math.min(parseInt(req.query.pages || "5", 10) || 5, 10);
 
   try {
     const { baseUrl, full, cached } = await getCategoryCatalogCached({
       region,
-      pages: pagesParam,
+      pages,
       categoryId: CATEGORY_ID,
       ttlMs: PSPLUS_TTL_MS,
     });
@@ -701,7 +763,7 @@ app.get("/api/eaplay-catalog", async (req, res) => {
     const slice = sorted.slice(offset, offset + limit);
     res.json({
       region,
-      pages: pagesParam,
+      pages,
       baseUrl,
       cached,
       total: sorted.length,
@@ -1398,17 +1460,24 @@ app.get("/api/game-details", async (req, res) => {
   }
 });
 
-// очистка кеша (удобно для отладки)
-// /api/clear-cache
+// Очистка кеша. В production задайте CLEAR_CACHE_SECRET и вызывайте ?token=...
 app.get("/api/clear-cache", (req, res) => {
+  const secret = process.env.CLEAR_CACHE_SECRET;
+  if (secret && req.query.token !== secret) {
+    return res.status(403).json({ ok: false, error: "Forbidden" });
+  }
   cache.clear();
   detailsCache.clear();
+  psplusCache.clear();
+  psplusPageCache.clear();
+  dealsPageCache.clear();
+  topGamesCache.clear();
+  newReleasesCache.clear();
+  monthlyGamesCache.clear();
+  conceptImageCache.clear();
   res.json({ ok: true });
 });
 
-(async () => {
-  await setupBot(app);
-  app.listen(PORT, () => {
-    console.log(`Deals proxy running: http://localhost:${PORT}`);
-  });
-})();
+app.listen(PORT, () => {
+  console.log(`Deals proxy running: http://localhost:${PORT}`);
+});
