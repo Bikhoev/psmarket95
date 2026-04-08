@@ -6,8 +6,8 @@
 }
 
 :root {
-  --bg-main: #020617; /* фон страницы */
-  --bg-elevated: #020818; /* фон блоков */
+  --bg-main: #060b1f; /* фон страницы — глубже и насыщеннее */
+  --bg-elevated: #0a1028; /* фон блоков */
   --bg-glass: rgba(15, 23, 42, 0.82);
   --border-subtle: rgba(148, 163, 184, 0.2);
   --accent: #3b82f6; /* ярко-синий */
@@ -32,16 +32,21 @@ body {
   color: #e5e7eb;
 
   background: radial-gradient(
-      circle at top left,
-      rgba(56, 189, 248, 0.12) 0,
-      transparent 45%
+      ellipse 120% 80% at 12% -10%,
+      rgba(56, 189, 248, 0.26) 0,
+      transparent 52%
     ),
     radial-gradient(
-      circle at 80% 120%,
-      rgba(129, 140, 248, 0.18) 0,
-      transparent 55%
+      ellipse 90% 70% at 92% 72%,
+      rgba(139, 92, 246, 0.22) 0,
+      transparent 50%
     ),
-    var(--bg-main);
+    radial-gradient(
+      circle at 48% 108%,
+      rgba(37, 99, 235, 0.16) 0,
+      transparent 42%
+    ),
+    linear-gradient(165deg, #0c1830 0%, var(--bg-main) 38%, #030712 100%);
   color: var(--text-main);
   min-height: 100vh;
 }
@@ -3379,7 +3384,7 @@ section[id] {
 
   .deal-body {
     padding: 7px 8px 8px;
-    gap: 5px;
+    gap: 6px;
   }
 
   .deal-title {
@@ -3387,31 +3392,27 @@ section[id] {
     min-height: 0;
     line-height: 1.28;
     letter-spacing: -0.015em;
-    margin-bottom: -2px;
+    margin-bottom: 0;
   }
 
   .deal-priceRow {
-    padding: 5px 7px;
+    padding: 6px 8px;
     gap: 2px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(148, 163, 184, 0.12);
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(148, 163, 184, 0.18);
   }
 
   .deal-rub {
-    font-size: 16px;
+    font-size: 0.98rem;
     font-weight: 800;
-    letter-spacing: 0;
+    letter-spacing: 0.01em;
   }
 
   .deal-ps {
     font-size: 10px;
     line-height: 1.35;
-    opacity: 0.72;
-  }
-
-  .deal-actions {
-    margin-top: 1px;
+    opacity: 0.76;
   }
 
   .deal-btn {
@@ -3420,6 +3421,12 @@ section[id] {
     border-radius: 10px;
     font-size: 0.78rem;
     font-weight: 700;
+    padding: 0 10px;
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+
+  .deal-buy {
+    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.18);
   }
 
   .deal-badge {
@@ -3511,80 +3518,100 @@ section[id] {
 }
 
 .deal-body {
-  padding: 12px;
+  padding: 10px 10px 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
+  min-height: 0;
 }
 
 .deal-title {
   font-weight: 600;
   font-size: 14px;
-  line-height: 1.2;
+  line-height: 1.22;
   color: #fff;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: 0;
-  margin-bottom: -3px;
+  margin-bottom: 0;
   opacity: 0.95;
+  flex-shrink: 0;
 }
 
+/* Плашка цены: те же скругление и обводка, что у кнопки */
 .deal-priceRow {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  flex-shrink: 0;
 }
 
 .deal-rub {
   font-weight: 800;
-  font-size: 20px;
-  letter-spacing: 0.2px;
+  font-size: 1.0625rem;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
   color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 
 .deal-ps {
-  font-size: 12px;
-  opacity: 0.75;
-  color: #fff;
+  font-size: 11.5px;
+  line-height: 1.35;
+  opacity: 0.78;
+  color: rgba(248, 250, 252, 0.88);
 }
 
-/* ✅ вот тут лечим “кривые кнопки” */
+.deal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
 .deal-actions:has(.deal-btn:only-child) {
-  grid-template-columns: 1fr;
+  gap: 0;
 }
 
-/* общий стиль для КНОПКИ и ССЫЛКИ */
+/* Кнопка: та же ширина, скругление и «вес» обводки, что у плашки цены */
 .deal-btn {
-  height: 44px;
+  min-height: 40px;
+  height: 40px;
   width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: 12px;
   font-weight: 700;
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
   text-decoration: none;
   cursor: pointer;
   user-select: none;
   transition: transform 0.12s ease, background 0.12s ease,
-    border-color 0.12s ease;
-
-  /* ✅ reset чтобы button не был “кривой” по умолчанию */
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+    border-color 0.12s ease, box-shadow 0.12s ease;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
-  line-height: 1;
-  font: inherit;
+  line-height: 1.15;
   box-sizing: border-box;
 }
 
 /* В корзину */
 .deal-cart {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(148, 163, 184, 0.22);
 }
 .deal-cart:hover {
   transform: translateY(-1px);
@@ -3593,23 +3620,32 @@ section[id] {
 
 /* Купить */
 .deal-buy {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.38),
+    rgba(59, 130, 246, 0.28)
+  );
+  border-color: rgba(129, 140, 248, 0.48);
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.2);
 }
 .deal-buy:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.14);
+  filter: brightness(1.05);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.28);
 }
 
 /* Состояние кнопки "В корзине" */
 .deal-buy.deal-buy--in-cart {
-  background: rgba(34, 197, 94, 0.16);
-  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.42);
   color: rgba(240, 253, 244, 0.98);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  filter: none;
 }
 .deal-buy.deal-buy--in-cart:hover {
   transform: none;
-  background: rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.26);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
 /* ✅ страховка: чтобы <a> выглядел как кнопка */
@@ -3708,31 +3744,9 @@ section[id] {
   justify-content: center;
 }
 
-/* ЦЕНА */
-.deal-rub {
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 0.2px;
-  line-height: 1.05;
-}
-
-/* знак рубля чуть меньше */
+/* знак рубля — текст в одной строке с суммой */
 .deal-rub::after {
   content: "";
-}
-
-/* если у тебя рубль выводится как "3490 ₽" текстом — можно слегка стилизовать ₽ через span,
-   но без правки HTML сделаем общий акцент на строку цены */
-.deal-priceRow {
-  padding: 8px 10px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(148, 163, 184, 0.14);
-}
-
-/* мелкая строка (psOffer) чуть аккуратнее */
-.deal-ps {
-  opacity: 0.78;
 }
 /* FIX mobile: фон/градиенты не должны перекрывать контент скидок */
 #dealsGrid,
@@ -4710,23 +4724,28 @@ body.tg-mini-app .cart-float-btn {
 /* ========= Мобильные: чуть светлее фон и сильнее синие блики (без «белой» темы) ========= */
 @media (max-width: 768px) {
   :root {
-    --bg-main: #070b14;
-    --bg-elevated: #0a0f1c;
-    --accent-soft: rgba(59, 130, 246, 0.38);
+    --bg-main: #070d22;
+    --bg-elevated: #0c122a;
+    --accent-soft: rgba(59, 130, 246, 0.4);
   }
 
   body {
     background: radial-gradient(
-        circle at top left,
-        rgba(56, 189, 248, 0.14) 0,
-        transparent 46%
+        ellipse 115% 75% at 8% -5%,
+        rgba(56, 189, 248, 0.24) 0,
+        transparent 50%
       ),
       radial-gradient(
-        circle at 80% 115%,
-        rgba(129, 140, 248, 0.2) 0,
-        transparent 54%
+        ellipse 85% 65% at 95% 68%,
+        rgba(139, 92, 246, 0.2) 0,
+        transparent 48%
       ),
-      var(--bg-main);
+      radial-gradient(
+        circle at 50% 105%,
+        rgba(37, 99, 235, 0.14) 0,
+        transparent 40%
+      ),
+      linear-gradient(168deg, #0d1a32 0%, var(--bg-main) 40%, #040814 100%);
   }
 
   .view-intro {
