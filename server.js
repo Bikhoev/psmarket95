@@ -31,6 +31,9 @@ app.use(express.static("public"));
 // ===== Кеш =====
 const cache = new Map(); // key -> { ts, data }
 const CACHE_TTL_MS = 1000 * 60 * 20; // 20 минут
+const DEALS_DISPLAY_PAGE_SIZE = 24;
+const DEALS_MAX_DISPLAY_PAGES = 10;
+const DEALS_MAX_SOURCE_PAGES = 30;
 
 // ===== PS PLUS CATALOG CACHE =====
 const psplusCache = new Map(); // key -> { ts, data }
@@ -125,6 +128,20 @@ function absUrl(href) {
   );
 }
 
+const DEALS_STORE_FILTERS = {
+  FULL_GAME: "storeDisplayClassification",
+  GAME_BUNDLE: "storeDisplayClassification",
+  PREMIUM_EDITION: "storeDisplayClassification",
+};
+
+function withDealsStoreFilters(rawUrl) {
+  const url = new URL(rawUrl);
+  for (const [key, value] of Object.entries(DEALS_STORE_FILTERS)) {
+    url.searchParams.set(key, value);
+  }
+  return url.toString();
+}
+
 function upgradeImg(url) {
   if (!url) return "";
   let u = url;
@@ -141,6 +158,87 @@ function upgradeImg(url) {
   }
 
   return u;
+}
+
+function isLikelyAddonProduct({ title, text, url }) {
+  const haystack = `${title || ""} ${text || ""} ${url || ""}`
+    .toLowerCase()
+    .replace(/\u00A0/g, " ");
+
+  const addonPatterns = [
+    /\badd[-\s]?on\b/i,
+    /\bdlc\b/i,
+    /\bexpansion\b/i,
+    /\bexpansions?\s+pack\b/i,
+    /\bseason\s+pass\b/i,
+    /\bbattle\s+pass\b/i,
+    /\byear\s+\d+\s+pass\b/i,
+    /\bwar\s+thunder\b/i,
+    /\bstarter\s+pack\b/i,
+    /\bfounder'?s?\s+pack\b/i,
+    /\bbooster\s+pack\b/i,
+    /\bbonus\s+pack\b/i,
+    /\bcontent\s+pack\b/i,
+    /\bcharacter\s+pack\b/i,
+    /\bweapon\s+pack\b/i,
+    /\bvehicle\s+pack\b/i,
+    /\bmap\s+pack\b/i,
+    /\blevel\s+pack\b/i,
+    /\bpack\b/i,
+    /\bepisode\b/i,
+    /\bchapter\b/i,
+    /\bvirtual\s+currency\b/i,
+    /\bcurrency\b/i,
+    /\bwallet\b/i,
+    /\bcoins?\b/i,
+    /\bcredits?\b/i,
+    /\bpoints?\b/i,
+    /\btokens?\b/i,
+    /\bzen\b/i,
+    /\bgems?\b/i,
+    /\bcrystals?\b/i,
+    /\bshards?\b/i,
+    /\bv[-\s]?bucks?\b/i,
+    /\bvc\b/i,
+    /\bfc\s+points?\b/i,
+    /\bcod\s+points?\b/i,
+    /\bshark\s+cards?\b/i,
+    /\bskins?\b/i,
+    /\bcostumes?\b/i,
+    /\boutfits?\b/i,
+    /\bavatars?\b/i,
+    /\bcosmetics?\b/i,
+    /\bbonus\s+content\b/i,
+    /\bin[-\s]?game\s+(?:item|currency|content|purchase)/i,
+    /дополнени[ея]/i,
+    /расширени[ея]/i,
+    /сезонн(?:ый|ого)\s+пропуск/i,
+    /боев(?:ой|ого)\s+пропуск/i,
+    /пропуск\s+\d+\s+года/i,
+    /war\s+thunder/i,
+    /neverwinter\s+zen/i,
+    /\bzen\b/i,
+    /набор\s+(?:персонаж|оружи|транспорт|карт|уровн|монет|кредит|очк|жетон|облик|костюм|скин)/i,
+    /набор\s+(?:поставщ|зен|техник|танк|самол[её]т|истреб|вертол[её]т|корабл|пополн)/i,
+    /пакет\s+(?:персонаж|оружи|транспорт|карт|уровн|монет|кредит|очк|жетон|облик|костюм|скин)/i,
+    /пакет\s+(?:поставщ|зен|техник|танк|самол[её]т|истреб|вертол[её]т|корабл|пополн)/i,
+    /эпизод/i,
+    /глава/i,
+    /внутриигров(?:ая|ой)\s+валют/i,
+    /монет[а-я]*/i,
+    /кредит[а-я]*/i,
+    /очк[аиов]*/i,
+    /жетон[а-я]*/i,
+    /самоцвет[а-я]*/i,
+    /кристалл[а-я]*/i,
+    /скин[а-я]*/i,
+    /костюм[а-я]*/i,
+    /облик[а-я]*/i,
+    /аватар[а-я]*/i,
+    /бонусн(?:ый|ого)\s+контент/i,
+  ];
+
+  return addonPatterns.some((pattern) => pattern.test(haystack));
 }
 
 // ===== PS PLUS CATALOG PARSER =====
@@ -243,6 +341,18 @@ function parseDealsList($, regionKey) {
     if (!li || li.length === 0) return;
 
     const liText = li.text().replace(/\s+/g, " ").trim();
+    const img = li.find("img").first();
+    const labelText = [
+      $a.attr("aria-label"),
+      $a.attr("title"),
+      img.attr("alt"),
+      li.attr("aria-label"),
+      li.attr("data-qa"),
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const url = absUrl($a.attr("href"));
+    if (isLikelyAddonProduct({ title, text: `${liText} ${labelText}`, url })) return;
 
     // скидка
     const discMatch = liText.match(/-?\s?(\d{1,2})%/);
@@ -269,11 +379,8 @@ function parseDealsList($, regionKey) {
     if (!Number.isFinite(base)) return;
 
     // картинка
-    const img = li.find("img").first();
     const rawImg = img.attr("src") || img.attr("data-src") || "";
     const imgSrc = upgradeImg(rawImg);
-
-    const url = absUrl($a.attr("href"));
 
     // RUB (✅ теперь "красивое" округление)
     const rate = getRate(regionKey, base);
@@ -304,7 +411,7 @@ function parseDealsList($, regionKey) {
 }
 
 // ===== Парсер для страниц browse (топ) и latest (новинки): те же поля + isPreOrder, поддержка Free =====
-function parseStorePageList($, regionKey) {
+function parseStorePageList($, regionKey, { includeDiscounts = false } = {}) {
   const items = [];
   const freeKeywords = regionKey === "ua" ? ["Бесплатно"] : ["Free"];
   const preOrderKeywords = regionKey === "ua" ? ["Pre-Order", "Предзаказ"] : ["Pre-Order"];
@@ -324,7 +431,7 @@ function parseStorePageList($, regionKey) {
     );
 
     const discMatch = liText.match(/-?\s?(\d{1,2})%/);
-    const discountPercent = discMatch ? Number(discMatch[1]) : null;
+    const discountPercent = includeDiscounts && discMatch ? Number(discMatch[1]) : null;
 
     let offerStr = "";
     let originalStr = "";
@@ -338,14 +445,25 @@ function parseStorePageList($, regionKey) {
       offerStr = regionKey === "ua" ? "Бесплатно" : "Free";
       base = 0;
     } else {
-      if (regionKey === "ua") {
-        const matches = liText.match(/UAH\s?[\d\s.,]+/g);
-        if (matches && matches.length >= 1) offerStr = matches[0];
-        if (matches && matches.length >= 2) originalStr = matches[1];
-      } else {
-        const matches = liText.match(/[\d\s.,]+?\s?TL/g);
-        if (matches && matches.length >= 1) offerStr = matches[0];
-        if (matches && matches.length >= 2) originalStr = matches[1];
+      const matches =
+        regionKey === "ua"
+          ? liText.match(/UAH\s?[\d\s.,]+/g)
+          : liText.match(/[\d\s.,]+?\s?TL/g);
+      if (matches && matches.length >= 1) {
+        offerStr = matches[0];
+        if (matches.length >= 2) {
+          originalStr = matches[1];
+          if (!includeDiscounts) {
+            // В топах/новинках не показываем скидочные цены: берём регулярную
+            // (обычно она в карточке идёт второй и больше скидочной).
+            const regular = matches.reduce((best, current) => {
+              const currentValue = normalizeNumber(current);
+              const bestValue = normalizeNumber(best);
+              return currentValue > bestValue ? current : best;
+            }, matches[0]);
+            offerStr = regular;
+          }
+        }
       }
       if (!offerStr) return;
       base = normalizeNumber(offerStr);
@@ -431,13 +549,18 @@ async function getDealsFull(regionKey, pages = 10) {
   if (categoryUrl) {
     // Как на PS Store: полный список скидок идёт с категории постранично — тот же порядок, что на сайте.
     const base = categoryUrl.replace(/\/1$/, "");
-    const pageNums = Array.from({ length: pages }, (_, i) => i + 1);
+    const sourcePages = Math.min(
+      Math.max(pages * 3, pages),
+      DEALS_MAX_SOURCE_PAGES
+    );
+    const pageNums = Array.from({ length: sourcePages }, (_, i) => i + 1);
     const pageItems = await mapWithConcurrency(pageNums, 4, async (p) => {
-      const pageKey = `${regionKey}:${base}:${p}`;
+      const pageUrl = withDealsStoreFilters(`${base}/${p}`);
+      const pageKey = `${regionKey}:filtered-deals-v4:${pageUrl}`;
       const cachedPage = dealsPageCache.get(pageKey);
       if (cachedPage && Date.now() - cachedPage.ts < CACHE_TTL_MS) return cachedPage.data;
 
-      const html = await fetchHtml(`${base}/${p}`);
+      const html = await fetchHtml(pageUrl);
       const $ = cheerio.load(html);
       const items = parseDealsList($, regionKey);
       dealsPageCache.set(pageKey, { ts: Date.now(), data: items });
@@ -492,7 +615,11 @@ function sortItems(items, sortKey) {
 // /api/deals?region=ua&pages=10&sort=discount&offset=0&limit=24
 app.get("/api/deals", async (req, res) => {
   const region = (req.query.region || "ua").toString();
-  const pages = Math.min(parseInt(req.query.pages || "10", 10) || 10, 10);
+  const pages = Math.min(
+    parseInt(req.query.pages || String(DEALS_MAX_DISPLAY_PAGES), 10) ||
+      DEALS_MAX_DISPLAY_PAGES,
+    DEALS_MAX_DISPLAY_PAGES
+  );
   const sortRaw = (req.query.sort || "popular").toString();
   const sort = ["popular", "discount", "price"].includes(sortRaw)
     ? sortRaw
@@ -506,7 +633,7 @@ app.get("/api/deals", async (req, res) => {
   if (!["ua", "tr"].includes(region))
     return res.status(400).json({ error: "region must be ua|tr" });
 
-  const key = `${region}:${pages}`;
+  const key = `${region}:${pages}:filtered-deals-v4`;
   const cached = cache.get(key);
 
   try {
@@ -518,7 +645,8 @@ app.get("/api/deals", async (req, res) => {
       if (full.length > 0) cache.set(key, { ts: Date.now(), data: full });
     }
 
-    const sorted = sortItems(full, sort);
+    const maxDisplayItems = pages * DEALS_DISPLAY_PAGE_SIZE;
+    const sorted = sortItems(full, sort).slice(0, maxDisplayItems);
     const slice = sorted.slice(offset, offset + limit);
 
     res.json({

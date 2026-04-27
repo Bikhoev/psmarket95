@@ -54,6 +54,96 @@ function ampInHtmlAttr(s) {
   return String(s ?? "").replace(/&/g, "&amp;");
 }
 
+function isLikelyAddonProduct(item) {
+  const haystack = [
+    item?.title,
+    item?.psOffer,
+    item?.psOriginal,
+    item?.url,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .replace(/\u00A0/g, " ");
+
+  return [
+    /\badd[-\s]?on\b/i,
+    /\bdlc\b/i,
+    /\bexpansion\b/i,
+    /\bexpansions?\s+pack\b/i,
+    /\bseason\s+pass\b/i,
+    /\bbattle\s+pass\b/i,
+    /\byear\s+\d+\s+pass\b/i,
+    /\bwar\s+thunder\b/i,
+    /\bstarter\s+pack\b/i,
+    /\bfounder'?s?\s+pack\b/i,
+    /\bbooster\s+pack\b/i,
+    /\bbonus\s+pack\b/i,
+    /\bcontent\s+pack\b/i,
+    /\bcharacter\s+pack\b/i,
+    /\bweapon\s+pack\b/i,
+    /\bvehicle\s+pack\b/i,
+    /\bmap\s+pack\b/i,
+    /\blevel\s+pack\b/i,
+    /\bpack\b/i,
+    /\bepisode\b/i,
+    /\bchapter\b/i,
+    /\bvirtual\s+currency\b/i,
+    /\bcurrency\b/i,
+    /\bwallet\b/i,
+    /\bcoins?\b/i,
+    /\bcredits?\b/i,
+    /\bpoints?\b/i,
+    /\btokens?\b/i,
+    /\bzen\b/i,
+    /\bgems?\b/i,
+    /\bcrystals?\b/i,
+    /\bshards?\b/i,
+    /\bv[-\s]?bucks?\b/i,
+    /\bvc\b/i,
+    /\bfc\s+points?\b/i,
+    /\bcod\s+points?\b/i,
+    /\bshark\s+cards?\b/i,
+    /\bskins?\b/i,
+    /\bcostumes?\b/i,
+    /\boutfits?\b/i,
+    /\bavatars?\b/i,
+    /\bcosmetics?\b/i,
+    /\bbonus\s+content\b/i,
+    /\bin[-\s]?game\s+(?:item|currency|content|purchase)/i,
+    /дополнени[ея]/i,
+    /расширени[ея]/i,
+    /сезонн(?:ый|ого)\s+пропуск/i,
+    /боев(?:ой|ого)\s+пропуск/i,
+    /пропуск\s+\d+\s+года/i,
+    /war\s+thunder/i,
+    /neverwinter\s+zen/i,
+    /\bzen\b/i,
+    /набор\s+(?:персонаж|оружи|транспорт|карт|уровн|монет|кредит|очк|жетон|облик|костюм|скин)/i,
+    /набор\s+(?:поставщ|зен|техник|танк|самол[её]т|истреб|вертол[её]т|корабл|пополн)/i,
+    /пакет\s+(?:персонаж|оружи|транспорт|карт|уровн|монет|кредит|очк|жетон|облик|костюм|скин)/i,
+    /пакет\s+(?:поставщ|зен|техник|танк|самол[её]т|истреб|вертол[её]т|корабл|пополн)/i,
+    /эпизод/i,
+    /глава/i,
+    /внутриигров(?:ая|ой)\s+валют/i,
+    /монет[а-я]*/i,
+    /кредит[а-я]*/i,
+    /очк[аиов]*/i,
+    /жетон[а-я]*/i,
+    /самоцвет[а-я]*/i,
+    /кристалл[а-я]*/i,
+    /скин[а-я]*/i,
+    /костюм[а-я]*/i,
+    /облик[а-я]*/i,
+    /аватар[а-я]*/i,
+    /бонусн(?:ый|ого)\s+контент/i,
+  ].some((pattern) => pattern.test(haystack));
+}
+
+function filterGameDeals(items) {
+  return (items || []).filter((item) => !isLikelyAddonProduct(item));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   function closeMenu() {}
 
@@ -1722,7 +1812,7 @@ ${lines.join("\n\n")}${discountNote}
         );
 
       total = Number(data.total || 0);
-      all.push(...data.items);
+      all.push(...filterGameDeals(data.items));
 
       offset += data.items.length;
       if (data.items.length === 0) break;
@@ -2169,7 +2259,7 @@ ${lines.join("\n\n")}${discountNote}
   });
 
   function buildDealsCardsHtml(items) {
-    return (items || [])
+    return filterGameDeals(items)
       .map((it) => {
         const meta =
           it.discountPercent != null
@@ -2403,7 +2493,8 @@ ${lines.join("\n\n")}${discountNote}
     if (!data.items) throw new Error(data.error || "Не удалось загрузить.");
 
     dealsTotalFromApi = Number(data.total || 0);
-    const cardsHtml = buildDealsCardsHtml(data.items);
+    const shownItems = filterGameDeals(data.items);
+    const cardsHtml = buildDealsCardsHtml(shownItems);
 
     if (reset) {
       dealsPages = [cardsHtml];
@@ -2435,10 +2526,11 @@ ${lines.join("\n\n")}${discountNote}
           .then((r) => r.json())
           .then((d) => {
             if (!d.items) throw new Error(d.error || "Не удалось загрузить.");
+            const shownItems = filterGameDeals(d.items);
             return {
               total: Number(d.total || 0),
               itemsLen: Array.isArray(d.items) ? d.items.length : 0,
-              html: buildDealsCardsHtml(d.items),
+              html: buildDealsCardsHtml(shownItems),
             };
           })
           .catch(() => null);
