@@ -410,6 +410,32 @@ function parseDealsList($, regionKey) {
   return uniq;
 }
 
+/** Категория «Все предложения» / All Deals — единый каталог скидок на PS Store. */
+function extractAllDealsCategoryBase($) {
+  const ALL_DEALS_HEADING = /^(Все предложения|All [Dd]eals)$/;
+
+  let base = null;
+  $('a[href*="/category/"][href$="/1"]').each((_, a) => {
+    if (base) return;
+    const $a = $(a);
+    const qa = ($a.attr("data-qa") || "").toLowerCase();
+    if (!qa.includes("strand") && !qa.includes("viewalltile")) return;
+
+    const heading = $a
+      .closest("section")
+      .find("h1,h2,h3")
+      .first()
+      .text()
+      .trim();
+    if (!ALL_DEALS_HEADING.test(heading)) return;
+
+    const full = absUrl($a.attr("href"));
+    if (full) base = full.replace(/\/1$/, "").replace(/\/$/, "");
+  });
+
+  return base;
+}
+
 // ===== Парсер для страниц browse (топ) и latest (новинки): те же поля + isPreOrder, поддержка Free =====
 function parseStorePageList($, regionKey, { includeDiscounts = false } = {}) {
   const items = [];
@@ -538,27 +564,21 @@ async function getDealsFull(regionKey, pages = 10) {
   const firstHtml = await fetchHtml(dealsUrl);
   const $first = cheerio.load(firstHtml);
 
-  let categoryUrl = null;
-  $first('a[href*="/category/"][href$="/1"]').each((_, a) => {
-    const href = $first(a).attr("href");
-    if (href && !categoryUrl) categoryUrl = absUrl(href);
-  });
-
+  const categoryBase = extractAllDealsCategoryBase($first);
   let all = [];
 
-  if (categoryUrl) {
-    // Как на PS Store: полный список скидок идёт с категории постранично — тот же порядок, что на сайте.
-    const base = categoryUrl.replace(/\/1$/, "");
+  if (categoryBase) {
     const sourcePages = Math.min(
       Math.max(pages * 3, pages),
       DEALS_MAX_SOURCE_PAGES
     );
     const pageNums = Array.from({ length: sourcePages }, (_, i) => i + 1);
     const pageItems = await mapWithConcurrency(pageNums, 4, async (p) => {
-      const pageUrl = withDealsStoreFilters(`${base}/${p}`);
-      const pageKey = `${regionKey}:filtered-deals-v4:${pageUrl}`;
+      const pageUrl = withDealsStoreFilters(`${categoryBase}/${p}`);
+      const pageKey = `${regionKey}:filtered-deals-v6:${pageUrl}`;
       const cachedPage = dealsPageCache.get(pageKey);
-      if (cachedPage && Date.now() - cachedPage.ts < CACHE_TTL_MS) return cachedPage.data;
+      if (cachedPage && Date.now() - cachedPage.ts < CACHE_TTL_MS)
+        return cachedPage.data;
 
       const html = await fetchHtml(pageUrl);
       const $ = cheerio.load(html);
@@ -633,7 +653,7 @@ app.get("/api/deals", async (req, res) => {
   if (!["ua", "tr"].includes(region))
     return res.status(400).json({ error: "region must be ua|tr" });
 
-  const key = `${region}:${pages}:filtered-deals-v4`;
+  const key = `${region}:${pages}:filtered-deals-v6`;
   const cached = cache.get(key);
 
   try {
