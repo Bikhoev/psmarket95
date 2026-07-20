@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PSMarket95 — админ-панель</title>
+    <link rel="stylesheet" href="/admin/admin.css" />
+  </head>
+  <body>
+    <header class="admin-header">
+      <div>
+        <p class="admin-kicker">PSMarket95</p>
+        <h1>Админ-панель</h1>
+        <p>Переопределяйте цену, название, обложку и описание игры поверх данных PS Store.</p>
+      </div>
+      <button class="admin-ghost" id="logoutBtn" type="button">Выйти</button>
+    </header>
+
+    <main class="admin-layout">
+      <section class="admin-card">
+        <div class="admin-section-head">
+          <div>
+            <h2>Найти игру</h2>
+            <p>Поиск работает по скидкам, топу и новинкам.</p>
+          </div>
+        </div>
+        <form class="admin-search" id="searchForm">
+          <select id="region">
+            <option value="ua">Европа (UA)</option>
+            <option value="tr">Турция</option>
+          </select>
+          <input id="query" type="search" placeholder="Например: Elden Ring" minlength="2" required />
+          <button type="submit">Искать</button>
+        </form>
+        <div class="admin-results" id="results"></div>
+      </section>
+
+      <section class="admin-card">
+        <h2>Редактирование</h2>
+        <form class="admin-editor" id="editorForm">
+          <input type="hidden" id="gameId" />
+          <label>
+            Название
+            <input id="title" type="text" placeholder="Оставьте пустым, чтобы взять с PS Store" />
+          </label>
+          <label>
+            Цена в рублях
+            <input id="rubPrice" type="number" min="0" step="1" placeholder="Например: 2490" />
+          </label>
+          <label>
+            URL картинки
+            <input id="img" type="url" placeholder="https://..." />
+          </label>
+          <label>
+            Описание
+            <textarea id="description" rows="7" placeholder="Короткое описание для модалки товара"></textarea>
+          </label>
+          <div class="admin-actions">
+            <button type="submit">Сохранить</button>
+            <button class="admin-ghost" id="resetBtn" type="button">Сбросить к авто</button>
+          </div>
+          <p class="admin-message" id="editorMessage"></p>
+        </form>
+      </section>
+
+      <section class="admin-card admin-wide">
+        <div class="admin-section-head">
+          <div>
+            <h2>Активные правки</h2>
+            <p>Эти значения сейчас показываются пользователям вместо автоматических.</p>
+          </div>
+          <button class="admin-ghost" id="refreshOverridesBtn" type="button">Обновить</button>
+        </div>
+        <div class="admin-overrides" id="overrides"></div>
+      </section>
+    </main>
+
+    <script src="/admin/admin.js" defer></script>
+  </body>
+</html>

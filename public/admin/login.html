@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PSMarket95 — вход в админку</title>
+    <link rel="stylesheet" href="/admin/admin.css" />
+  </head>
+  <body class="admin-login-page">
+    <main class="admin-login">
+      <form class="admin-card admin-login__form" id="loginForm">
+        <p class="admin-kicker">PSMarket95</p>
+        <h1>Вход в админ-панель</h1>
+        <label>
+          Пароль администратора
+          <input id="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit">Войти</button>
+        <p class="admin-message" id="message"></p>
+      </form>
+    </main>
+    <script>
+      const form = document.getElementById("loginForm");
+      const message = document.getElementById("message");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        message.textContent = "Проверяем...";
+        const res = await fetch("/api/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: document.getElementById("password").value }),
+        });
+        if (res.ok) {
+          location.href = "/admin/";
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        message.textContent = data.error || "Не удалось войти";
+      });
+    </script>
+  </body>
+</html>

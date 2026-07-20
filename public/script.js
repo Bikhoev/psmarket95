@@ -57,8 +57,6 @@ function ampInHtmlAttr(s) {
 function isLikelyAddonProduct(item) {
   const haystack = [
     item?.title,
-    item?.psOffer,
-    item?.psOriginal,
     item?.url,
   ]
     .filter(Boolean)
@@ -156,6 +154,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const isActive = a.dataset.nav === viewId;
       if (a.classList.contains("bottom-nav__item")) {
         a.classList.toggle("bottom-nav__item--active", isActive);
+        a.setAttribute("aria-current", isActive ? "page" : null);
+      }
+      if (a.classList.contains("desktop-nav__link")) {
+        a.classList.toggle("desktop-nav__link--active", isActive);
         a.setAttribute("aria-current", isActive ? "page" : null);
       }
     });
@@ -446,24 +448,36 @@ document.addEventListener("DOMContentLoaded", () => {
     return cart.filter((it) => it.type === "game").length;
   }
 
-  function multiGameBundleDiscountRub(gameCount) {
-    if (gameCount >= 4) return 500;
-    if (gameCount === 3) return 300;
-    if (gameCount === 2) return 200;
-    return 0;
+  // Скидка за каждую игру зависит от её цены:
+  //   < 500 ₽  → 50 ₽
+  //   500–2999 ₽ → 100 ₽
+  //   ≥ 3000 ₽ → 150 ₽
+  // Начисляется только при 2+ играх в корзине.
+  function gameItemDiscount(rubPrice) {
+    const p = Number(rubPrice || 0);
+    if (p < 500) return 50;
+    if (p < 3000) return 100;
+    return 150;
+  }
+
+  function calcBundleDiscount() {
+    const games = cart.filter((it) => it.type === "game");
+    if (games.length < 2) return 0;
+    return games.reduce((sum, it) => sum + gameItemDiscount(it.rubPrice), 0);
   }
 
   function bundleDiscountLabel(gameCount) {
-    if (gameCount >= 4) return "Скидка за комплект (4+ игр)";
-    if (gameCount === 3) return "Скидка за комплект (3 игры)";
-    if (gameCount === 2) return "Скидка за комплект (2 игры)";
-    return "";
+    if (gameCount < 2) return "";
+    let form = "игр";
+    if (gameCount % 10 === 1 && gameCount % 100 !== 11) form = "игра";
+    else if ([2, 3, 4].includes(gameCount % 10) && ![12, 13, 14].includes(gameCount % 100)) form = "игры";
+    return `Скидка за комплект (${gameCount} ${form})`;
   }
 
   function calcCartTotals() {
     const subtotal = calcCartSum();
     const gameCount = countGamesInCart();
-    const discountRaw = multiGameBundleDiscountRub(gameCount);
+    const discountRaw = calcBundleDiscount();
     const discount = Math.min(discountRaw, Math.max(0, subtotal));
     const payable = Math.max(0, subtotal - discount);
     return { subtotal, gameCount, discount, payable };
@@ -1506,6 +1520,9 @@ ${lines.join("\n\n")}${discountNote}
   const dealsTabUA = document.getElementById("dealsTabUA");
   const dealsTabTR = document.getElementById("dealsTabTR");
   const dealsSortSelect = document.getElementById("dealsSort");
+  const dealsSortToggle = document.getElementById("dealsSortToggle");
+  const dealsSortPopover = document.getElementById("dealsSortPopover");
+  const dealsSearchToggle = document.getElementById("dealsSearchToggle");
   const dealsMoreBtn = document.getElementById("dealsMore");
   const dealsCarouselTrack = document.getElementById("dealsCarouselTrack");
   const dealsCarouselCounter = document.getElementById("dealsCarouselCounter");
@@ -1640,7 +1657,7 @@ ${lines.join("\n\n")}${discountNote}
 
     const wrap = document.createElement("div");
     wrap.id = "dealsSearchWrap";
-    wrap.className = "deals-search";
+    wrap.className = dealsSearchToggle ? "deals-search deals-search-drop" : "deals-search";
 
     // ✅ Внутри input: только очистка текста
     // ✅ Справа отдельно: закрытие избранного
@@ -1669,7 +1686,10 @@ ${lines.join("\n\n")}${discountNote}
     </div>
   `;
 
-    if (dealsSortSelect && dealsSortSelect.parentElement) {
+    if (dealsSearchToggle) {
+      const row = dealsSearchToggle.closest(".panel-header--row") || dealsSearchToggle.parentElement;
+      row.insertAdjacentElement("afterend", wrap);
+    } else if (dealsSortSelect && dealsSortSelect.parentElement) {
       dealsSortSelect.parentElement.insertAdjacentElement("afterend", wrap);
     } else if (dealsGrid) {
       dealsGrid.insertAdjacentElement("beforebegin", wrap);
@@ -1729,6 +1749,110 @@ ${lines.join("\n\n")}${discountNote}
 
     syncDealsControls();
   }
+
+  // ====== Поповеры "Сортировка" / "Поиск" (иконки справа от regions-табов) ======
+  function closeSearchPanel(panel) {
+    if (!panel || !panel.classList.contains("is-open")) return;
+    const current = panel.style.maxHeight && panel.style.maxHeight !== "none"
+      ? parseFloat(panel.style.maxHeight)
+      : panel.scrollHeight;
+    panel.style.maxHeight = `${current}px`;
+    panel.classList.remove("is-open");
+    requestAnimationFrame(() => {
+      panel.style.maxHeight = "0px";
+    });
+  }
+
+  function openSearchPanel(panel) {
+    if (!panel || panel.classList.contains("is-open")) return;
+    panel.classList.add("is-open");
+    panel.style.maxHeight = "0px";
+    const target = panel.scrollHeight;
+    requestAnimationFrame(() => {
+      panel.style.maxHeight = `${target}px`;
+    });
+    panel.addEventListener(
+      "transitionend",
+      function onEnd(e) {
+        if (e.propertyName !== "max-height") return;
+        if (panel.classList.contains("is-open")) panel.style.maxHeight = "none";
+        panel.removeEventListener("transitionend", onEnd);
+      }
+    );
+  }
+
+  function closeDealsPopovers(except) {
+    document.querySelectorAll(".deals-popover.is-open").forEach((el) => {
+      if (el === except) return;
+      el.classList.remove("is-open");
+    });
+    const searchPanel = document.getElementById("dealsSearchWrap");
+    if (searchPanel && searchPanel !== except && searchPanel.classList.contains("deals-search-drop")) {
+      closeSearchPanel(searchPanel);
+    }
+    document.querySelectorAll(".deals-tool-btn[aria-expanded='true']").forEach((btn) => {
+      btn.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function toggleDealsPopover(popoverEl, btnEl) {
+    if (!popoverEl || !btnEl) return;
+    const willOpen = !popoverEl.classList.contains("is-open");
+    closeDealsPopovers();
+    if (!willOpen) return;
+
+    popoverEl.classList.add("is-open");
+    btnEl.setAttribute("aria-expanded", "true");
+    requestAnimationFrame(() => {
+      popoverEl.querySelector("input, select")?.focus();
+    });
+  }
+
+  function toggleSearchPanel(panelEl, btnEl) {
+    if (!panelEl || !btnEl) return;
+    const willOpen = !panelEl.classList.contains("is-open");
+    closeDealsPopovers(willOpen ? panelEl : undefined);
+
+    if (!willOpen) {
+      closeSearchPanel(panelEl);
+      btnEl.setAttribute("aria-expanded", "false");
+      return;
+    }
+
+    openSearchPanel(panelEl);
+    btnEl.setAttribute("aria-expanded", "true");
+    requestAnimationFrame(() => {
+      panelEl.querySelector("input")?.focus();
+    });
+  }
+
+  dealsSortToggle?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleDealsPopover(dealsSortPopover, dealsSortToggle);
+  });
+
+  dealsSearchToggle?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    ensureDealsSearchUI();
+    toggleSearchPanel(document.getElementById("dealsSearchWrap"), dealsSearchToggle);
+  });
+
+  dealsSortSelect?.addEventListener("change", () => closeDealsPopovers());
+
+  document.addEventListener("click", (e) => {
+    if (
+      e.target.closest(".deals-popover") ||
+      e.target.closest(".deals-search-drop") ||
+      e.target.closest(".deals-tool-btn")
+    ) {
+      return;
+    }
+    closeDealsPopovers();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeDealsPopovers();
+  });
 
   // ✅ видимость двух кнопок управления:
   // - крестик очистки (внутри поля) -> только когда есть текст
@@ -2004,6 +2128,8 @@ ${lines.join("\n\n")}${discountNote}
   const dealModalUntilLabel = document.getElementById("dealModalUntilLabel");
   const dealModalPlatform = document.getElementById("dealModalPlatform");
   const dealModalRu = document.getElementById("dealModalRu");
+  const dealModalDescriptionCard = document.getElementById("dealModalDescriptionCard");
+  const dealModalDescription = document.getElementById("dealModalDescription");
 
   let currentModalItem = null;
 
@@ -2216,6 +2342,8 @@ ${lines.join("\n\n")}${discountNote}
     dealModalPlatform.textContent = "Загрузка…";
     dealModalRu.textContent = "Загрузка…";
     dealModalUntil.textContent = "—";
+    if (dealModalDescriptionCard) dealModalDescriptionCard.classList.add("hidden");
+    if (dealModalDescription) dealModalDescription.textContent = "";
 
     currentModalItem = {
       title,
@@ -2251,6 +2379,11 @@ ${lines.join("\n\n")}${discountNote}
       const ruText = data.ruSupport || "—";
       dealModalRu.textContent = ruText === "Нет данных" ? "Нет русского" : ruText;
       dealModalUntil.textContent = data.discountUntil || "—";
+      if (dealModalDescriptionCard && dealModalDescription) {
+        const description = String(data.description || "").trim();
+        dealModalDescription.textContent = description;
+        dealModalDescriptionCard.classList.toggle("hidden", !description);
+      }
     } catch (err) {
       dealModalPlatform.textContent = "Не удалось загрузить";
       dealModalRu.textContent = "—";
@@ -2261,10 +2394,7 @@ ${lines.join("\n\n")}${discountNote}
   function buildDealsCardsHtml(items) {
     return filterGameDeals(items)
       .map((it) => {
-        const meta =
-          it.discountPercent != null
-            ? `-${it.discountPercent}% • ${it.psOffer}`
-            : it.psOffer;
+        const meta = it.discountPercent != null ? `-${it.discountPercent}%` : "";
         const titleText = String(it.title || "");
         const titleAttr = escapeAttr(titleText);
         const titleHtml = escapeHtml(titleText);
@@ -2303,7 +2433,7 @@ ${lines.join("\n\n")}${discountNote}
     <div class="deal-title" title="${titleAttr}">${titleHtml}</div>
     <div class="deal-priceRow">
       <div class="deal-rub">${it.rubPrice} ₽</div>
-      <div class="deal-ps">${metaHtml}</div>
+      ${metaHtml ? `<div class="deal-ps">${metaHtml}</div>` : ""}
     </div>
     <div class="deal-actions">
       <button class="deal-btn deal-buy ${buyClass}" type="button" aria-pressed="${inCart ? "true" : "false"}"
@@ -2333,10 +2463,7 @@ ${lines.join("\n\n")}${discountNote}
     const regionAttr = escapeAttr(String(region ?? ""));
     return (items || [])
       .map((it) => {
-        const meta =
-          it.discountPercent != null
-            ? `-${it.discountPercent}% • ${it.psOffer}`
-            : it.psOffer;
+        const meta = it.discountPercent != null ? `-${it.discountPercent}%` : "";
         const titleText = String(it.title || "");
         const titleAttr = escapeAttr(titleText);
         const titleHtml = escapeHtml(titleText);
@@ -2382,7 +2509,7 @@ ${lines.join("\n\n")}${discountNote}
     <div class="deal-title" title="${titleAttr}">${titleHtml}</div>
     <div class="deal-priceRow">
       <div class="deal-rub">${rubDisplay}</div>
-      <div class="deal-ps">${metaHtml}</div>
+      ${metaHtml ? `<div class="deal-ps">${metaHtml}</div>` : ""}
     </div>
     <div class="deal-actions">
       <button class="deal-btn deal-buy ${buyClass}" type="button" aria-pressed="${inCart ? "true" : "false"}"

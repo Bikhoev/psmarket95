@@ -2,9 +2,25 @@ import "dotenv/config";
 import express from "express";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
+import {
+  applyOverridesToItems,
+  deleteOverride,
+  extractGameId,
+  getOverrideForUrl,
+  listOverrides,
+  setOverride,
+} from "./server/overridesStore.js";
+import {
+  clearSessionCookie,
+  createSessionCookie,
+  requireAdminSession,
+  validateAdminPassword,
+} from "./server/adminAuth.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(express.json({ limit: "128kb" }));
 
 // ===== Security headers =====
 app.use((req, res, next) => {
@@ -19,11 +35,31 @@ app.use((req, res, next) => {
 // ===== CORS =====
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,POST,PUT,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
+
+app.post("/api/admin/login", (req, res) => {
+  if (!validateAdminPassword(req.body?.password)) {
+    return res.status(401).json({ error: "Неверный пароль" });
+  }
+  res.setHeader("Set-Cookie", createSessionCookie());
+  return res.json({ ok: true });
+});
+
+app.post("/api/admin/logout", (_req, res) => {
+  res.setHeader("Set-Cookie", clearSessionCookie());
+  return res.json({ ok: true });
+});
+
+app.use("/admin", (req, res, next) => {
+  if (req.path === "/login.html" || req.path === "/admin.css") return next();
+  return requireAdminSession(req, res, next);
+});
+
+app.use("/api/admin", requireAdminSession);
 
 // ===== Static files =====
 app.use(express.static("public"));
@@ -69,7 +105,7 @@ const MIN_GAME_PRICE_RUB = 390;
 
 function getRate(regionKey, basePrice) {
   const isTR = regionKey === "tr";
-  if (basePrice >= 2000) return isTR ? 2.65 : 2.7;
+  if (basePrice >= 2000) return isTR ? 2.35 : 2.65;
   if (basePrice >= 1500) return isTR ? 2.8 : 2.9;
   if (basePrice >= 1000) return isTR ? 2.95 : 3.05;
   if (basePrice >= 500) return isTR ? 3.2 : 3.25;
@@ -533,13 +569,15 @@ async function getTopGamesFull(regionKey) {
   const url = `https://store.playstation.com/${locale}/pages/browse`;
   const key = `top:${regionKey}`;
   const cached = topGamesCache.get(key);
-  if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) return cached.data;
+  if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) {
+    return applyOverridesToItems(cached.data);
+  }
 
   const html = await fetchHtml(url);
   const $ = cheerio.load(html);
   const items = parseStorePageList($, regionKey);
   if (items.length > 0) topGamesCache.set(key, { ts: Date.now(), data: items });
-  return items;
+  return applyOverridesToItems(items);
 }
 
 async function getNewReleasesFull(regionKey) {
@@ -547,14 +585,16 @@ async function getNewReleasesFull(regionKey) {
   const url = `https://store.playstation.com/${locale}/pages/latest`;
   const key = `latest:${regionKey}`;
   const cached = newReleasesCache.get(key);
-  if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) return cached.data;
+  if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) {
+    return applyOverridesToItems(cached.data);
+  }
 
   const html = await fetchHtml(url);
   const $ = cheerio.load(html);
   const items = parseStorePageList($, regionKey);
   if (items.length > 0)
     newReleasesCache.set(key, { ts: Date.now(), data: items });
-  return items;
+  return applyOverridesToItems(items);
 }
 
 async function getDealsFull(regionKey, pages = 10) {
@@ -573,7 +613,7 @@ async function getDealsFull(regionKey, pages = 10) {
       DEALS_MAX_SOURCE_PAGES
     );
     const pageNums = Array.from({ length: sourcePages }, (_, i) => i + 1);
-    const pageItems = await mapWithConcurrency(pageNums, 4, async (p) => {
+    const pageItems = await mapWithConcurrency(pageNums, 6, async (p) => {
       const pageUrl = withDealsStoreFilters(`${categoryBase}/${p}`);
       const pageKey = `${regionKey}:filtered-deals-v6:${pageUrl}`;
       const cachedPage = dealsPageCache.get(pageKey);
@@ -600,10 +640,39 @@ async function getDealsFull(regionKey, pages = 10) {
     uniq.push(it);
   }
 
-  return uniq;
+  return applyOverridesToItems(uniq);
 }
 
-// popular — порядок как в ленте PS Store; discount — по % скидки; price — по цене в валюте магазина (как «Цена: по возрастанию»)
+// Возвращает кешированные данные мгновенно, а в фоне запускает обновление
+// кеша, чтобы следующий запрос уже получил свежие данные.
+async function getDealsWithStaleCache(regionKey, pages) {
+  const key = `${regionKey}:${pages}:filtered-deals-v6`;
+  const cached = cache.get(key);
+  const now = Date.now();
+
+  if (cached && now - cached.ts < CACHE_TTL_MS) {
+    // Кеш свежий — возвращаем мгновенно
+    return { items: cached.data, fromCache: true };
+  }
+
+  if (cached && now - cached.ts < CACHE_TTL_MS * 3) {
+    // Кеш устарел, но данные есть — отдаём их сразу (stale-while-revalidate),
+    // а обновление запускаем в фоне асинхронно
+    getDealsFull(regionKey, pages)
+      .then((full) => {
+        if (full.length > 0) cache.set(key, { ts: Date.now(), data: full });
+      })
+      .catch((e) => console.warn(`[bg refresh] deals/${regionKey}:`, e.message));
+    return { items: cached.data, fromCache: true, stale: true };
+  }
+
+  // Кеша нет совсем — ждём
+  const full = await getDealsFull(regionKey, pages);
+  if (full.length > 0) cache.set(key, { ts: Date.now(), data: full });
+  return { items: full, fromCache: false };
+}
+
+// popular — порядок как в ленте PS Store; discount — по % скидки; price — по рублевой цене сайта.
 function sortItems(items, sortKey) {
   const indexed = items.map((it, i) => ({ it, i }));
   if (sortKey === "discount") {
@@ -619,8 +688,8 @@ function sortItems(items, sortKey) {
   if (sortKey === "price") {
     return [...indexed]
       .sort((a, b) => {
-        const pa = Number(a.it.basePrice);
-        const pb = Number(b.it.basePrice);
+        const pa = Number(a.it.rubPrice);
+        const pb = Number(b.it.rubPrice);
         const na = Number.isFinite(pa) ? pa : Infinity;
         const nb = Number.isFinite(pb) ? pb : Infinity;
         if (na !== nb) return na - nb;
@@ -653,17 +722,8 @@ app.get("/api/deals", async (req, res) => {
   if (!["ua", "tr"].includes(region))
     return res.status(400).json({ error: "region must be ua|tr" });
 
-  const key = `${region}:${pages}:filtered-deals-v6`;
-  const cached = cache.get(key);
-
   try {
-    let full;
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-      full = cached.data;
-    } else {
-      full = await getDealsFull(region, pages);
-      if (full.length > 0) cache.set(key, { ts: Date.now(), data: full });
-    }
+    const { items: full, fromCache, stale } = await getDealsWithStaleCache(region, pages);
 
     const maxDisplayItems = pages * DEALS_DISPLAY_PAGE_SIZE;
     const sorted = sortItems(full, sort).slice(0, maxDisplayItems);
@@ -673,7 +733,8 @@ app.get("/api/deals", async (req, res) => {
       region,
       pages,
       sort,
-      cached: !!(cached && Date.now() - cached.ts < CACHE_TTL_MS),
+      cached: fromCache,
+      stale: stale || false,
       total: sorted.length,
       offset,
       limit,
@@ -790,6 +851,92 @@ app.get("/api/new-releases", async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+function normalizeAdminGame(item, source, overridesById) {
+  const gameId = extractGameId(item?.url);
+  return {
+    gameId,
+    source,
+    title: item.title,
+    img: item.img,
+    url: item.url,
+    rubPrice: item.rubPrice,
+    discountPercent: item.discountPercent ?? null,
+    description: item.description || "",
+    isOverridden: Boolean(overridesById.get(gameId)),
+    override: overridesById.get(gameId) || null,
+  };
+}
+
+app.get("/api/admin/find-games", async (req, res) => {
+  const region = (req.query.region || "ua").toString();
+  const q = (req.query.q || "").toString().trim().toLowerCase();
+  if (!["ua", "tr"].includes(region)) {
+    return res.status(400).json({ error: "region must be ua|tr" });
+  }
+  if (q.length < 2) return res.json({ items: [] });
+
+  try {
+    const overridesById = new Map(
+      (await listOverrides()).map((override) => [override.gameId, override])
+    );
+    const [deals, topGames, newReleases] = await Promise.all([
+      getDealsFull(region, DEALS_MAX_DISPLAY_PAGES),
+      getTopGamesFull(region),
+      getNewReleasesFull(region),
+    ]);
+    const sources = [
+      ["Скидки", deals],
+      ["Топ игр", topGames],
+      ["Новинки", newReleases],
+    ];
+    const seen = new Set();
+    const items = [];
+
+    for (const [source, sourceItems] of sources) {
+      for (const item of sourceItems) {
+        const gameId = extractGameId(item?.url);
+        if (!gameId || seen.has(gameId)) continue;
+        if (!String(item.title || "").toLowerCase().includes(q)) continue;
+        seen.add(gameId);
+        items.push(normalizeAdminGame(item, source, overridesById));
+        if (items.length >= 60) break;
+      }
+      if (items.length >= 60) break;
+    }
+
+    return res.json({ items });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/admin/overrides", async (_req, res) => {
+  try {
+    const items = await listOverrides();
+    return res.json({ items });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put("/api/admin/overrides/:gameId", async (req, res) => {
+  try {
+    const override = await setOverride(req.params.gameId, req.body || {});
+    return res.json({ ok: true, override });
+  } catch (e) {
+    return res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete("/api/admin/overrides/:gameId", async (req, res) => {
+  try {
+    const deleted = await deleteOverride(req.params.gameId);
+    return res.json({ ok: true, deleted });
+  } catch (e) {
+    return res.status(400).json({ error: e.message });
   }
 });
 
@@ -923,72 +1070,6 @@ app.get("/api/eaplay-catalog", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-
-// ===== ИГРЫ МЕСЯЦА (Essential) — парсим playstation.com/ps-plus/games/?category=MONTHLY_GAMES =====
-const monthlyGamesCache = new Map(); // region -> { ts, data }
-const PSPLUS_ESSENTIAL_TTL_MS = 1000 * 60 * 60 * 5; // 5 часов
-
-const MONTHLY_GAMES_URL = {
-  ua: "https://www.playstation.com/ru-ua/ps-plus/games/?category=MONTHLY_GAMES",
-  tr: "https://www.playstation.com/en-tr/ps-plus/games/?category=MONTHLY_GAMES",
-};
-
-// Кэш обложек по URL концепта (store), чтобы не дергать store при каждом запросе
-const conceptImageCache = new Map(); // conceptUrl -> { ts, img }
-const CONCEPT_IMAGE_TTL_MS = 1000 * 60 * 60 * 24; // 24 часа
-
-async function getConceptImage(conceptUrl) {
-  if (!conceptUrl || !conceptUrl.includes("store.playstation.com")) return "";
-  const cached = conceptImageCache.get(conceptUrl);
-  if (cached && Date.now() - cached.ts < CONCEPT_IMAGE_TTL_MS) return cached.img || "";
-  try {
-    const html = await fetchHtml(conceptUrl);
-    const $ = cheerio.load(html);
-    const ogImage =
-      $('meta[property="og:image"]').attr("content") ||
-      $('meta[name="og:image"]').attr("content") ||
-      "";
-    const img = (ogImage && ogImage.startsWith("http")) ? upgradeImg(ogImage) : "";
-    conceptImageCache.set(conceptUrl, { ts: Date.now(), img });
-    return img;
-  } catch {
-    conceptImageCache.set(conceptUrl, { ts: Date.now(), img: "" });
-    return "";
-  }
-}
-
-function parseMonthlyGamesFromHtml(html, baseUrl) {
-  const $ = cheerio.load(html);
-  const items = [];
-  $('a[href*="store.playstation.com"][href*="/concept/"]').each((_, el) => {
-    const $a = $(el);
-    const href = $a.attr("href");
-    const title = $a.text().replace(/\s+/g, " ").trim();
-    if (!href || !title || title.length < 2) return;
-    items.push({ title, url: href, img: "" });
-  });
-  const seen = new Set();
-  const uniq = items.filter((it) => {
-    const k = it.url + "|" + it.title;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-  return uniq;
-}
-
-async function getMonthlyGamesCached(region) {
-  if (!["ua", "tr"].includes(region)) throw new Error("region must be ua|tr");
-  const url = MONTHLY_GAMES_URL[region];
-  const cached = monthlyGamesCache.get(region);
-  if (cached && Date.now() - cached.ts < PSPLUS_ESSENTIAL_TTL_MS) {
-    return { baseUrl: url, full: cached.data, cached: true };
-  }
-  const html = await fetchHtml(url);
-  const full = parseMonthlyGamesFromHtml(html, url);
-  if (full.length > 0) monthlyGamesCache.set(region, { ts: Date.now(), data: full });
-  return { baseUrl: url, full, cached: false };
-}
 
 // ===== UBISOFT+ CLASSICS (PS Store category) =====
 app.get("/api/psplus-ubisoft", async (req, res) => {
@@ -1548,7 +1629,11 @@ app.get("/api/game-details", async (req, res) => {
 
   const cached = detailsCache.get(url);
   if (cached && Date.now() - cached.ts < DETAILS_TTL_MS) {
-    return res.json(cached.data);
+    const override = await getOverrideForUrl(url);
+    return res.json({
+      ...cached.data,
+      description: override?.description || "",
+    });
   }
 
   try {
@@ -1599,8 +1684,14 @@ app.get("/api/game-details", async (req, res) => {
     }
 
     const discountUntil = extractDiscountUntilFromNextData(nextData) || "—";
+    const override = await getOverrideForUrl(url);
 
-    const data = { platform, discountUntil, ruSupport };
+    const data = {
+      platform,
+      discountUntil,
+      ruSupport,
+      description: override?.description || "",
+    };
     detailsCache.set(url, { ts: Date.now(), data });
     res.json(data);
   } catch (e) {
@@ -1621,11 +1712,31 @@ app.get("/api/clear-cache", (req, res) => {
   dealsPageCache.clear();
   topGamesCache.clear();
   newReleasesCache.clear();
-  monthlyGamesCache.clear();
-  conceptImageCache.clear();
   res.json({ ok: true });
 });
 
+// ===== Фоновый прогрев кеша скидок =====
+// Запускается при старте и затем каждые 18 минут (TTL = 20 мин),
+// чтобы пользователь никогда не ждал холодного скрапинга.
+async function warmDealsCache() {
+  for (const region of ["ua", "tr"]) {
+    try {
+      const full = await getDealsFull(region, DEALS_MAX_DISPLAY_PAGES);
+      if (full.length > 0) {
+        const key = `${region}:${DEALS_MAX_DISPLAY_PAGES}:filtered-deals-v6`;
+        cache.set(key, { ts: Date.now(), data: full });
+        console.log(`[warm] deals/${region}: ${full.length} items`);
+      }
+    } catch (e) {
+      console.warn(`[warm] deals/${region} failed:`, e.message);
+    }
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`Deals proxy running: http://localhost:${PORT}`);
+  // Прогреваем сразу при старте (не блокируем ответ сервера)
+  warmDealsCache();
+  // Обновляем за 2 минуты до истечения TTL (каждые 18 мин)
+  setInterval(warmDealsCache, CACHE_TTL_MS - 2 * 60 * 1000);
 });

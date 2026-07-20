@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <title>PSMarket95 — Mini App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#020617" />
+    <meta name="theme-color" content="#f6f8fc" />
 
     <link rel="icon" type="image/svg+xml" href="../psm-icon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,16 +21,6 @@
         padding-bottom: env(safe-area-inset-bottom, 0px);
         min-height: 100vh;
         min-height: 100dvh;
-      }
-      .tg-mini-app .header,
-      .tg-mini-app .hero,
-      .tg-mini-app .footer,
-      .tg-mini-app #calculator,
-      .tg-mini-app #services,
-      .tg-mini-app #how-to-buy,
-      .tg-mini-app #about,
-      .tg-mini-app #contacts {
-        display: none !important;
       }
       .tg-mini-app .section:first-child {
         padding-top: 12px;
@@ -361,6 +351,9 @@
           </div>
         </div>
         <div class="modal-cards">
+          <div class="info-card modal-description hidden" id="dealModalDescriptionCard">
+            <div class="info-row info-row--stack"><span>Описание</span><strong id="dealModalDescription"></strong></div>
+          </div>
           <div class="info-card" id="dealModalUntilRow">
             <div class="info-row"><span id="dealModalUntilLabel">Скидка действует до</span><strong id="dealModalUntil">—</strong></div>
           </div>
