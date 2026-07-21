@@ -359,7 +359,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ====== FAVORITES STORAGE ======
   const FAV_KEY = "psm_favs_v1";
+  const FAV_DATA_KEY = "psm_favs_data_v1"; // полные данные игр для мгновенной загрузки
   let favs = loadFavs(); // Set(url)
+  let favsData = loadFavsData(); // Map(url -> item)
 
   function loadFavs() {
     try {
@@ -370,11 +372,31 @@ document.addEventListener("DOMContentLoaded", () => {
       return new Set();
     }
   }
+  function loadFavsData() {
+    try {
+      const raw = localStorage.getItem(FAV_DATA_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Map(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Map();
+    }
+  }
   function saveFavs() {
     localStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favs)));
+    // Чистим данные удалённых из избранного
+    for (const url of favsData.keys()) {
+      if (!favs.has(url)) favsData.delete(url);
+    }
+    localStorage.setItem(FAV_DATA_KEY, JSON.stringify(Array.from(favsData.entries())));
   }
   function isFavorite(url) {
     return favs.has(String(url || ""));
+  }
+  function saveFavItemData(item) {
+    if (!item?.url) return;
+    // Сохраняем только нужные поля, не раздувая localStorage
+    const { url, title, img, rubPrice, region, discountPercent, platform } = item;
+    favsData.set(String(url), { url, title, img, rubPrice, region, discountPercent, platform });
   }
 
   // ✅ единая функция обновления счётчиков избранного
@@ -386,11 +408,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function toggleFavorite(url) {
+  function toggleFavorite(url, itemData) {
     const u = String(url || "");
     if (!u) return false;
-    if (favs.has(u)) favs.delete(u);
-    else favs.add(u);
+    if (favs.has(u)) {
+      favs.delete(u);
+    } else {
+      favs.add(u);
+      if (itemData) saveFavItemData(itemData);
+    }
     saveFavs();
     updateFavHeaderCount();
     updateFavButtonsState(); // синхронизируем все кнопки ♥ (как updateDealBuyButtonsState)
@@ -1577,20 +1603,42 @@ ${lines.join("\n\n")}${discountNote}
       return;
     }
     favPageEmpty.classList.add("hidden");
-    favPageGrid.innerHTML = psLoaderHtml("Загрузка…");
+
+    // Мгновенный рендер из кеша localStorage
+    const cachedItems = Array.from(favs)
+      .map((url) => favsData.get(url))
+      .filter(Boolean);
+
+    if (cachedItems.length > 0) {
+      const html = buildStoreCardsHtmlWithRegions(cachedItems);
+      favPageGrid.innerHTML = html || "";
+      updateFavButtonsState();
+      updateDealBuyButtonsState();
+    } else {
+      favPageGrid.innerHTML = psLoaderHtml("Загрузка…");
+    }
+
+    // Фоновое обновление актуальных данных (цены, картинки)
     try {
       const all = await loadAllCatalogItemsForFavorites();
       const favItems = (all || []).filter((it) => isFavorite(it.url));
-      if (favItems.length === 0) {
+
+      // Обновляем кеш свежими данными
+      favItems.forEach((it) => saveFavItemData(it));
+      if (favItems.length > 0) saveFavs();
+
+      if (favItems.length === 0 && cachedItems.length === 0) {
         favPageGrid.innerHTML = "";
         favPageEmpty.classList.remove("hidden");
         return;
       }
-      favPageEmpty.classList.add("hidden");
-      const html = buildStoreCardsHtmlWithRegions(favItems);
+      // Перерисовываем только если страница всё ещё открыта
+      if (!document.querySelector("#viewFavorites:not(.hidden)")) return;
+      const freshItems = favItems.length > 0 ? favItems : cachedItems;
+      const html = buildStoreCardsHtmlWithRegions(freshItems);
       favPageGrid.innerHTML = html || "";
-    } catch (e) {
-      favPageGrid.innerHTML = `<div class="deal-meta">Ошибка: ${escapeHtml(e.message)}</div>`;
+    } catch {
+      // Ошибка сети — показываем кешированное, ничего не трогаем
     }
     updateFavButtonsState();
     updateDealBuyButtonsState();
@@ -2151,7 +2199,7 @@ ${lines.join("\n\n")}${discountNote}
       e.preventDefault();
       if (!currentModalItem?.url) return;
 
-      const nowFav = toggleFavorite(currentModalItem.url);
+      const nowFav = toggleFavorite(currentModalItem.url, currentModalItem);
       syncModalFavButton();
 
       showToast(
@@ -2251,7 +2299,16 @@ ${lines.join("\n\n")}${discountNote}
       e.stopPropagation();
 
       const url = favBtn.dataset.url || "";
-      const nowFav = toggleFavorite(url);
+      const card = favBtn.closest("[data-url]");
+      const itemData = card ? {
+        url,
+        title: card.dataset.title || "",
+        img: card.dataset.img || "",
+        rubPrice: Number(card.dataset.rub || 0),
+        region: card.dataset.region || dealsRegion,
+        discountPercent: card.dataset.discount === "1" ? card.querySelector(".deal-badge")?.textContent?.replace(/[^0-9]/g,"") || null : null,
+      } : null;
+      const nowFav = toggleFavorite(url, itemData);
       // updateFavButtonsState уже вызван в toggleFavorite
 
       // если мы сейчас в избранном режиме и удалили — карточка должна исчезнуть

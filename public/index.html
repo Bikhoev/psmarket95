@@ -228,42 +228,120 @@
       <!-- View: Info (услуги, как заказать, о нас, контакты) -->
       <section class="view view-info hidden" id="viewInfo" data-view="info">
         <div class="container container--narrow">
-          <div class="view-intro view-intro--info">
-            <p>Услуги, способы заказа и контакты PSMarket95.</p>
-          </div>
-          <div class="info-grid">
-            <div class="info-block">
-              <h3>Наши услуги</h3>
-              <ul>
-                <li><strong>Покупка игр</strong> — подбор региона, оформление</li>
-                <li><strong>Подписки</strong> — PS Plus, EA Play</li>
-                <li><strong>Консультация</strong> — поможем выбрать</li>
-              </ul>
+
+          <!-- Brand strip -->
+          <div class="info-brand">
+            <div class="info-brand__logo">PS</div>
+            <div>
+              <div class="info-brand__name">PSMarket95</div>
+              <div class="info-brand__sub">Более 3 лет · Тысячи клиентов</div>
             </div>
-            <div class="info-block">
-              <h3>Как заказать</h3>
-              <ol class="steps steps--compact">
-                <li>Найди игру в PS Store, запиши цену</li>
-                <li>Рассчитай в калькуляторе на сайте</li>
-                <li>Напиши нам — отправь скрин/название</li>
-                <li>Оплати — оформим на твой аккаунт</li>
-              </ol>
-            </div>
-            <div class="info-block">
-              <h3>О нас</h3>
-              <p>PSMarket95 — более 3 лет на рынке, тысячи довольных клиентов. Консультируем, подсказываем оптимальный вариант, сопровождаем до завершения заказа.</p>
-            </div>
-            <div class="info-block info-block--contacts">
-              <h3>Контакты</h3>
-              <ul class="contacts-list">
-                <li><a href="https://t.me/bihoev" target="_blank" rel="noopener" class="contact-link">Telegram @psmarket95</a></li>
-                <li><a href="https://wa.me/79639982998" target="_blank" rel="noopener" class="contact-link">WhatsApp +7 (963) 998-29-98</a></li>
-                <li><a href="https://www.instagram.com/playstationmarket95" target="_blank" rel="noopener" class="contact-link">Instagram @playstationmarket95</a></li>
-                <li><a href="mailto:psmarket95@outlook.com" class="contact-link">psmarket95@outlook.com</a></li>
-              </ul>
-              <p class="contacts-hours">Ежедневно 10:00–23:30 (МСК). Отвечаем за 5–15 мин.</p>
+            <div class="info-brand__stats">
+              <div class="info-brand__stat"><span>3+</span>года</div>
+              <div class="info-brand__stat"><span>5–15</span>мин</div>
             </div>
           </div>
+
+          <!-- Услуги -->
+          <div class="info-section">
+            <h3 class="info-section__title">Что мы предлагаем</h3>
+            <div class="info-services">
+              <div class="info-service">
+                <div class="info-service__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10a5 5 0 0 1 4.8 3.6l1.1 4A4 4 0 0 1 19 20h-1.2a3 3 0 0 1-2.6-1.5l-.8-1.4a1 1 0 0 0-.9-.5h-3a1 1 0 0 0-.9.5l-.8 1.4A3 3 0 0 1 6.2 20H5a4 4 0 0 1-3.9-5.4l1.1-4A5 5 0 0 1 7 7Z"/></svg>
+                </div>
+                <div>
+                  <div class="info-service__name">Покупка игр</div>
+                  <div class="info-service__desc">Подбираем регион, оформляем на твой аккаунт</div>
+                </div>
+              </div>
+              <div class="info-service">
+                <div class="info-service__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 8v10l9 5 9-5V8"/></svg>
+                </div>
+                <div>
+                  <div class="info-service__name">Подписки</div>
+                  <div class="info-service__desc">PS Plus Essential, Extra, Deluxe и EA Play</div>
+                </div>
+              </div>
+              <div class="info-service">
+                <div class="info-service__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="8" r="1"/></svg>
+                </div>
+                <div>
+                  <div class="info-service__name">Консультация</div>
+                  <div class="info-service__desc">Поможем выбрать игру или тариф подписки</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Как заказать -->
+          <div class="info-section">
+            <h3 class="info-section__title">Как заказать</h3>
+            <ol class="info-steps">
+              <li class="info-step">
+                <div class="info-step__num">1</div>
+                <div class="info-step__text">Найди игру в каталоге или PS Store и запиши цену в местной валюте</div>
+              </li>
+              <li class="info-step">
+                <div class="info-step__num">2</div>
+                <div class="info-step__text">Рассчитай итоговую цену в рублях через калькулятор на сайте</div>
+              </li>
+              <li class="info-step">
+                <div class="info-step__num">3</div>
+                <div class="info-step__text">Напиши нам в Telegram или WhatsApp — отправь название или скрин</div>
+              </li>
+              <li class="info-step">
+                <div class="info-step__num">4</div>
+                <div class="info-step__text">Оплати удобным способом — оформим на твой аккаунт</div>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Контакты -->
+          <div class="info-section">
+            <h3 class="info-section__title">Контакты</h3>
+            <div class="info-contacts">
+              <a href="https://t.me/bihoev" target="_blank" rel="noopener" class="info-contact info-contact--tg">
+                <svg class="info-contact__icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 1 0 24 12 12 12 0 0 0 11.944 0Zm5.992 8.2-2.02 9.52c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.117 14.3l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.462c.537-.194 1.006.13.833.946Z"/></svg>
+                <div>
+                  <div class="info-contact__label">Telegram</div>
+                  <div class="info-contact__value">@psmarket95</div>
+                </div>
+                <svg class="info-contact__arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              </a>
+              <a href="https://wa.me/79639982998" target="_blank" rel="noopener" class="info-contact info-contact--wa">
+                <svg class="info-contact__icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                <div>
+                  <div class="info-contact__label">WhatsApp</div>
+                  <div class="info-contact__value">+7 (963) 998-29-98</div>
+                </div>
+                <svg class="info-contact__arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              </a>
+              <a href="https://www.instagram.com/playstationmarket95" target="_blank" rel="noopener" class="info-contact info-contact--ig">
+                <svg class="info-contact__icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+                <div>
+                  <div class="info-contact__label">Instagram</div>
+                  <div class="info-contact__value">@playstationmarket95</div>
+                </div>
+                <svg class="info-contact__arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              </a>
+              <a href="mailto:psmarket95@outlook.com" class="info-contact info-contact--email">
+                <svg class="info-contact__icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+                <div>
+                  <div class="info-contact__label">Email</div>
+                  <div class="info-contact__value">psmarket95@outlook.com</div>
+                </div>
+                <svg class="info-contact__arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              </a>
+            </div>
+            <p class="info-hours">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+              Ежедневно 10:00–23:30 МСК · Отвечаем за 5–15 минут
+            </p>
+          </div>
+
         </div>
       </section>
 
