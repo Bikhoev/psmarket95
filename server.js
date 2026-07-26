@@ -570,14 +570,14 @@ async function getTopGamesFull(regionKey) {
   const key = `top:${regionKey}`;
   const cached = topGamesCache.get(key);
   if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) {
-    return applyOverridesToItems(cached.data);
+    return applyOverridesToItems(cached.data, regionKey);
   }
 
   const html = await fetchHtml(url);
   const $ = cheerio.load(html);
   const items = parseStorePageList($, regionKey);
   if (items.length > 0) topGamesCache.set(key, { ts: Date.now(), data: items });
-  return applyOverridesToItems(items);
+  return applyOverridesToItems(items, regionKey);
 }
 
 async function getNewReleasesFull(regionKey) {
@@ -586,7 +586,7 @@ async function getNewReleasesFull(regionKey) {
   const key = `latest:${regionKey}`;
   const cached = newReleasesCache.get(key);
   if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) {
-    return applyOverridesToItems(cached.data);
+    return applyOverridesToItems(cached.data, regionKey);
   }
 
   const html = await fetchHtml(url);
@@ -594,7 +594,7 @@ async function getNewReleasesFull(regionKey) {
   const items = parseStorePageList($, regionKey);
   if (items.length > 0)
     newReleasesCache.set(key, { ts: Date.now(), data: items });
-  return applyOverridesToItems(items);
+  return applyOverridesToItems(items, regionKey);
 }
 
 async function getDealsFull(regionKey, pages = 10) {
@@ -640,7 +640,7 @@ async function getDealsFull(regionKey, pages = 10) {
     uniq.push(it);
   }
 
-  return applyOverridesToItems(uniq);
+  return applyOverridesToItems(uniq, regionKey);
 }
 
 // Возвращает кешированные данные мгновенно, а в фоне запускает обновление

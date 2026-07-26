@@ -29,9 +29,24 @@ function normalizeOverride(input = {}) {
     }
   }
 
+  // Общая цена (устаревший формат — оставлен для обратной совместимости)
   if (Object.prototype.hasOwnProperty.call(input, "rubPrice")) {
     const value = Number(input.rubPrice);
     if (Number.isFinite(value) && value >= 0) out.rubPrice = Math.round(value);
+  }
+
+  // Цены по регионам
+  for (const key of ["rubPriceUA", "rubPriceTR"]) {
+    if (Object.prototype.hasOwnProperty.call(input, key)) {
+      const raw = input[key];
+      // Пустая строка = удалить переопределение для этого региона
+      if (raw === "" || raw === null || raw === undefined) {
+        out[key] = null; // сигнал на удаление
+      } else {
+        const value = Number(raw);
+        if (Number.isFinite(value) && value >= 0) out[key] = Math.round(value);
+      }
+    }
   }
 
   return out;
@@ -93,11 +108,15 @@ export async function setOverride(gameId, input) {
     return null;
   }
 
-  overrides[key] = {
-    ...(overrides[key] || {}),
-    ...normalized,
-    updatedAt: new Date().toISOString(),
-  };
+  const existing = overrides[key] || {};
+  const merged = { ...existing, ...normalized, updatedAt: new Date().toISOString() };
+
+  // Удаляем региональные цены, если переданы как null
+  for (const rk of ["rubPriceUA", "rubPriceTR"]) {
+    if (merged[rk] === null) delete merged[rk];
+  }
+
+  overrides[key] = merged;
   await save();
   return { gameId: key, ...overrides[key] };
 }
@@ -112,12 +131,24 @@ export async function deleteOverride(gameId) {
   return existed;
 }
 
-export async function applyOverridesToItems(items = []) {
+export async function applyOverridesToItems(items = [], region = "") {
   await ensureLoaded();
   return items.map((item) => {
     const gameId = extractGameId(item?.url);
     const override = gameId ? overrides[gameId] : null;
     if (!override) return item;
+
+    // Цена: сначала региональная, затем общая, затем авто
+    const regionKey = (region || item.region || "").toLowerCase();
+    const regionPrice =
+      regionKey === "ua" ? override.rubPriceUA :
+      regionKey === "tr" ? override.rubPriceTR :
+      undefined;
+
+    const rubPrice =
+      typeof regionPrice === "number" ? regionPrice :
+      typeof override.rubPrice === "number" ? override.rubPrice :
+      item.rubPrice;
 
     return {
       ...item,
@@ -125,8 +156,7 @@ export async function applyOverridesToItems(items = []) {
       title: override.title || item.title,
       img: override.img || item.img,
       description: override.description || item.description || "",
-      rubPrice:
-        typeof override.rubPrice === "number" ? override.rubPrice : item.rubPrice,
+      rubPrice,
       isOverridden: true,
     };
   });
