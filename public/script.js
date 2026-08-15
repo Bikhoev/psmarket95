@@ -2464,6 +2464,11 @@ ${lines.join("\n\n")}${discountNote}
         const inCart = isInCart(dealsRegion, it.url);
         const buyClass = inCart ? "deal-buy--in-cart" : "";
         const buyText = inCart ? "В корзине" : "Купить";
+        const badgeHtml = it.discountPercent != null
+          ? `<div class="deal-badge">-${it.discountPercent}%</div>`
+          : it.isSale
+            ? `<div class="deal-badge deal-badge--sale">СКИДКА</div>`
+            : "";
         return `
 <article class="deal-card"
   data-url="${urlAttr}"
@@ -2471,7 +2476,7 @@ ${lines.join("\n\n")}${discountNote}
   data-img="${ampInHtmlAttr(img)}"
   data-rub="${it.rubPrice}"
   data-region="${dealsRegion}"
-  data-discount="${it.discountPercent != null ? "1" : ""}">
+  data-discount="${(it.discountPercent != null || it.isSale) ? "1" : ""}">
   <div class="deal-media">
     <button class="fav-btn ${favActive}" type="button"
       aria-label="Добавить в избранное"
@@ -2484,7 +2489,7 @@ ${lines.join("\n\n")}${discountNote}
       alt="${titleAttr}"
       loading="lazy"
     />
-    ${it.discountPercent != null ? `<div class="deal-badge">-${it.discountPercent}</div>` : ""}
+    ${badgeHtml}
   </div>
   <div class="deal-body">
     <div class="deal-title" title="${titleAttr}">${titleHtml}</div>

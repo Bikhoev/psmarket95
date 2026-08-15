@@ -16,6 +16,12 @@ import {
   requireAdminSession,
   validateAdminPassword,
 } from "./server/adminAuth.js";
+import {
+  loadHistory,
+  saveHistory,
+  recordBasePrice,
+  getDiscountPercent,
+} from "./server/priceHistory.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -162,20 +168,6 @@ function absUrl(href) {
   return (
     "https://store.playstation.com" + (href.startsWith("/") ? href : "/" + href)
   );
-}
-
-const DEALS_STORE_FILTERS = {
-  FULL_GAME: "storeDisplayClassification",
-  GAME_BUNDLE: "storeDisplayClassification",
-  PREMIUM_EDITION: "storeDisplayClassification",
-};
-
-function withDealsStoreFilters(rawUrl) {
-  const url = new URL(rawUrl);
-  for (const [key, value] of Object.entries(DEALS_STORE_FILTERS)) {
-    url.searchParams.set(key, value);
-  }
-  return url.toString();
 }
 
 function upgradeImg(url) {
@@ -363,7 +355,173 @@ async function getCategoryCatalogCached({ region, pages, categoryId, ttlMs }) {
   return { baseUrl, full, cached };
 }
 
-// ===== НОВЫЙ ПАРСЕР: берём товары из <li> по ссылкам concept/product =====
+// ===== ГРАФQL API (PlayStation Store) =====
+const GQL_URL = "https://web.np.playstation.com/api/graphql/v1/op";
+// Persisted-query hash. Если Sony обновит бандл — можно взять новый hash
+// из браузерного DevTools → Network → op?operationName=categoryGridRetrieve
+const GQL_HASH =
+  "9845afc0dbaab4965f6563fffc703f588c8e76792000e8610843b8d3ee9c4c09";
+
+// Известные UUID категорий PS Store
+const PS_CATS = {
+  SALES: "3f772501-f6f8-49b7-abac-874a88ca4897", // Скидки — правильная категория Deals
+  PS5:   "4cbf39e2-5749-4970-ba81-93a489e4570c", // PS5 игры
+  PS4:   "44d8bb20-653e-431e-8ad0-c0a365f68d2f", // PS4 игры
+  ALL:   "28c9c2b2-cecc-415c-9a08-482a605cb104", // Все игры
+};
+
+// Локали PS Store для каждого региона
+// UA: ru-ua (русский язык, Украина) — именно этот используется на PS Store UA
+const GQL_LOCALE = { ua: "ru-ua", tr: "en-tr" };
+
+async function gqlCategoryPage(catId, locale, size, offset, sortBy) {
+  const vars = {
+    id: catId,
+    pageArgs: { size, offset },
+    sortBy: sortBy || null,
+    filterBy: [],
+    facetOptions: [],
+  };
+  const url =
+    `${GQL_URL}?operationName=categoryGridRetrieve` +
+    `&variables=${encodeURIComponent(JSON.stringify(vars))}` +
+    `&extensions=${encodeURIComponent(JSON.stringify({ persistedQuery: { version: 1, sha256Hash: GQL_HASH } }))}`;
+  const r = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      Accept: "application/json",
+      "X-Apollo-Operation-Name": "categoryGridRetrieve",
+      "x-psn-store-locale-override": locale,
+    },
+  });
+  if (!r.ok) throw new Error(`GQL HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.errors?.length) throw new Error(d.errors[0].message);
+  return d.data?.categoryGridRetrieve || null;
+}
+
+const PREFERRED_IMG_ROLES = [
+  "PORTRAIT_BANNER",        // портретный box art — именно его PS Store показывает в сетке
+  "MASTER",                 // основной арт (часто квадратный)
+  "FOUR_BY_THREE_BANNER",   // 4:3 — умеренная обрезка в квадрате
+  "GAMEHUB_COVER_ART",      // 16:9 широкий баннер
+  "EDITION_KEY_ART",
+  "BACKGROUND",
+];
+
+function pickBestImage(media) {
+  for (const role of PREFERRED_IMG_ROLES) {
+    const m = media?.find((x) => x.role === role && x.type === "IMAGE");
+    if (m) return m.url;
+  }
+  return media?.find((x) => x.type === "IMAGE")?.url || "";
+}
+
+function gqlProductToItem(product, regionKey) {
+  const price = product.price || {};
+  const basePriceStr = price.basePrice || "";
+  const discountedPriceStr = price.discountedPrice || "";
+
+  const basePrice = normalizeNumber(basePriceStr);
+  const discountedPrice = normalizeNumber(discountedPriceStr);
+  const effectiveBase =
+    Number.isFinite(discountedPrice) && discountedPrice > 0
+      ? discountedPrice
+      : basePrice;
+
+  let discountPercent = null;
+  if (price.discountText) {
+    const m = price.discountText.match(/\d+/);
+    if (m) discountPercent = parseInt(m[0], 10);
+  } else if (
+    Number.isFinite(basePrice) &&
+    Number.isFinite(discountedPrice) &&
+    basePrice > 0 &&
+    discountedPrice > 0 &&
+    discountedPrice < basePrice
+  ) {
+    discountPercent = Math.round((1 - discountedPrice / basePrice) * 100);
+  }
+
+  const img = pickBestImage(product.media);
+  const storeLocale = regionKey === "ua" ? "en-ua" : "en-tr";
+  const productUrl = `https://store.playstation.com/${storeLocale}/product/${product.id}`;
+
+  const isFree = price.isFree === true || effectiveBase === 0;
+  const rate = getRate(regionKey, effectiveBase);
+  const rubPrice = isFree ? 0 : niceRubPrice(effectiveBase * rate);
+
+  return {
+    title: product.name,
+    npTitleId: product.npTitleId || null,
+    img,
+    url: productUrl,
+    psOffer: discountedPriceStr || basePriceStr || "",
+    psOriginal:
+      Number.isFinite(basePrice) &&
+      Number.isFinite(discountedPrice) &&
+      basePrice > 0 &&
+      discountedPrice > 0 &&
+      discountedPrice < basePrice
+        ? basePriceStr
+        : null,
+    discountPercent,
+    basePrice: effectiveBase,
+    rubPrice,
+    isPreOrder: false,
+    isFree,
+    region: regionKey,
+  };
+}
+
+// Скачивает все страницы категории GraphQL и возвращает массив items.
+// recordBasePrices=true → сохраняем в историю как "базовые" (полные) цены.
+async function fetchAllGqlItems(catId, regionKey, maxItems, sortBy, recordBasePrices = false) {
+  const locale = GQL_LOCALE[regionKey];
+  const PAGE_SIZE = 100;
+  const items = [];
+  let offset = 0;
+  let totalCount = null;
+
+  while (items.length < maxItems) {
+    const size = Math.min(PAGE_SIZE, maxItems - items.length);
+    const cat = await gqlCategoryPage(catId, locale, size, offset, sortBy);
+    if (!cat) break;
+
+    if (totalCount === null) totalCount = cat.pageInfo?.totalCount ?? 0;
+
+    const products = cat.products || [];
+    if (products.length === 0) break;
+
+    for (const p of products) {
+      if (!p.name) continue;
+      if (p.price?.isFree && !p.price?.basePrice) continue;
+      const item = gqlProductToItem(p, regionKey);
+      if (item.rubPrice < MIN_GAME_PRICE_RUB && !item.isFree) continue;
+      if (isLikelyAddonProduct({ title: item.title, text: "", url: item.url })) continue;
+
+      // Записываем базовую цену в историю для последующего вычисления скидок
+      if (recordBasePrices && item.npTitleId && item.basePrice > 0) {
+        recordBasePrice(item.npTitleId, regionKey, item.basePrice);
+      }
+
+      items.push(item);
+    }
+
+    offset += products.length;
+    if (offset >= (totalCount || 0)) break;
+  }
+
+  const seen = new Set();
+  return items.filter((item) => {
+    if (seen.has(item.url)) return false;
+    seen.add(item.url);
+    return true;
+  });
+}
+
+// ===== ПАРСЕР ДЛЯ СТАРОГО ФОРМАТА =====
+// Оставлен только для getCategoryCatalogCached (PS Plus / EA Play)
 function parseDealsList($, regionKey) {
   const items = [];
 
@@ -446,207 +604,60 @@ function parseDealsList($, regionKey) {
   return uniq;
 }
 
-/** Категория «Все предложения» / All Deals — единый каталог скидок на PS Store. */
-function extractAllDealsCategoryBase($) {
-  const ALL_DEALS_HEADING = /^(Все предложения|All [Dd]eals)$/;
-
-  let base = null;
-  $('a[href*="/category/"][href$="/1"]').each((_, a) => {
-    if (base) return;
-    const $a = $(a);
-    const qa = ($a.attr("data-qa") || "").toLowerCase();
-    if (!qa.includes("strand") && !qa.includes("viewalltile")) return;
-
-    const heading = $a
-      .closest("section")
-      .find("h1,h2,h3")
-      .first()
-      .text()
-      .trim();
-    if (!ALL_DEALS_HEADING.test(heading)) return;
-
-    const full = absUrl($a.attr("href"));
-    if (full) base = full.replace(/\/1$/, "").replace(/\/$/, "");
-  });
-
-  return base;
-}
-
-// ===== Парсер для страниц browse (топ) и latest (новинки): те же поля + isPreOrder, поддержка Free =====
-function parseStorePageList($, regionKey, { includeDiscounts = false } = {}) {
-  const items = [];
-  const freeKeywords = regionKey === "ua" ? ["Бесплатно"] : ["Free"];
-  const preOrderKeywords = regionKey === "ua" ? ["Pre-Order", "Предзаказ"] : ["Pre-Order"];
-
-  const selector = 'a[href*="/concept/"], a[href*="/product/"]';
-  $(selector).each((_, a) => {
-    const $a = $(a);
-    const title = $a.text().trim();
-    if (!title || title.length < 2) return;
-
-    const li = $a.closest("li") || $a.closest("article");
-    if (!li || li.length === 0) return;
-
-    const liText = li.text().replace(/\s+/g, " ").trim();
-    const isPreOrder = preOrderKeywords.some((k) =>
-      new RegExp(k, "i").test(liText)
-    );
-
-    const discMatch = liText.match(/-?\s?(\d{1,2})%/);
-    const discountPercent = includeDiscounts && discMatch ? Number(discMatch[1]) : null;
-
-    let offerStr = "";
-    let originalStr = "";
-    let base = 0;
-
-    const isFree = freeKeywords.some((k) =>
-      new RegExp(`\\b${k}\\b`, "i").test(liText)
-    );
-
-    if (isFree) {
-      offerStr = regionKey === "ua" ? "Бесплатно" : "Free";
-      base = 0;
-    } else {
-      const matches =
-        regionKey === "ua"
-          ? liText.match(/UAH\s?[\d\s.,]+/g)
-          : liText.match(/[\d\s.,]+?\s?TL/g);
-      if (matches && matches.length >= 1) {
-        offerStr = matches[0];
-        if (matches.length >= 2) {
-          originalStr = matches[1];
-          if (!includeDiscounts) {
-            // В топах/новинках не показываем скидочные цены: берём регулярную
-            // (обычно она в карточке идёт второй и больше скидочной).
-            const regular = matches.reduce((best, current) => {
-              const currentValue = normalizeNumber(current);
-              const bestValue = normalizeNumber(best);
-              return currentValue > bestValue ? current : best;
-            }, matches[0]);
-            offerStr = regular;
-          }
-        }
-      }
-      if (!offerStr) return;
-      base = normalizeNumber(offerStr);
-      if (!Number.isFinite(base)) return;
-    }
-
-    const img = li.find("img").first();
-    const rawImg = img.attr("src") || img.attr("data-src") || "";
-    const imgSrc = upgradeImg(rawImg);
-    const url = absUrl($a.attr("href"));
-
-    const rate = getRate(regionKey, base);
-    const rubPrice = base === 0 ? 0 : niceRubPrice(base * rate);
-
-    items.push({
-      title,
-      img: imgSrc,
-      url,
-      psOffer: offerStr,
-      psOriginal: originalStr || null,
-      discountPercent,
-      basePrice: base,
-      rubPrice,
-      isPreOrder,
-    });
-  });
-
-  const seen = new Set();
-  const uniq = [];
-  for (const it of items) {
-    const key = (it.url || "") + "|" + it.title;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    uniq.push(it);
-  }
-  return uniq;
-}
+// ===== GraphQL-based getters (заменяют HTML-скрапинг) =====
 
 async function getTopGamesFull(regionKey) {
-  const locale = regionKey === "ua" ? "ru-ua" : "en-tr";
-  const url = `https://store.playstation.com/${locale}/pages/browse`;
   const key = `top:${regionKey}`;
   const cached = topGamesCache.get(key);
   if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) {
     return applyOverridesToItems(cached.data, regionKey);
   }
-
-  const html = await fetchHtml(url);
-  const $ = cheerio.load(html);
-  const items = parseStorePageList($, regionKey);
+  // PS5-игры с дефолтной (featured) сортировкой + пишем базовые цены в историю
+  const items = await fetchAllGqlItems(PS_CATS.PS5, regionKey, 200, null, true);
   if (items.length > 0) topGamesCache.set(key, { ts: Date.now(), data: items });
   return applyOverridesToItems(items, regionKey);
 }
 
 async function getNewReleasesFull(regionKey) {
-  const locale = regionKey === "ua" ? "ru-ua" : "en-tr";
-  const url = `https://store.playstation.com/${locale}/pages/latest`;
   const key = `latest:${regionKey}`;
   const cached = newReleasesCache.get(key);
   if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) {
     return applyOverridesToItems(cached.data, regionKey);
   }
-
-  const html = await fetchHtml(url);
-  const $ = cheerio.load(html);
-  const items = parseStorePageList($, regionKey);
-  if (items.length > 0)
-    newReleasesCache.set(key, { ts: Date.now(), data: items });
+  // PS5 игры, сортировка по дате выпуска + пишем базовые цены в историю
+  const items = await fetchAllGqlItems(
+    PS_CATS.PS5,
+    regionKey,
+    200,
+    { name: "productReleaseDate", isAscending: false },
+    true
+  );
+  if (items.length > 0) newReleasesCache.set(key, { ts: Date.now(), data: items });
   return applyOverridesToItems(items, regionKey);
 }
 
 async function getDealsFull(regionKey, pages = 10) {
-  const locale = regionKey === "ua" ? "ru-ua" : "en-tr";
-  const dealsUrl = `https://store.playstation.com/${locale}/pages/deals`;
-
-  const firstHtml = await fetchHtml(dealsUrl);
-  const $first = cheerio.load(firstHtml);
-
-  const categoryBase = extractAllDealsCategoryBase($first);
-  let all = [];
-
-  if (categoryBase) {
-    const sourcePages = Math.min(
-      Math.max(pages * 3, pages),
-      DEALS_MAX_SOURCE_PAGES
-    );
-    const pageNums = Array.from({ length: sourcePages }, (_, i) => i + 1);
-    const pageItems = await mapWithConcurrency(pageNums, 6, async (p) => {
-      const pageUrl = withDealsStoreFilters(`${categoryBase}/${p}`);
-      const pageKey = `${regionKey}:filtered-deals-v6:${pageUrl}`;
-      const cachedPage = dealsPageCache.get(pageKey);
-      if (cachedPage && Date.now() - cachedPage.ts < CACHE_TTL_MS)
-        return cachedPage.data;
-
-      const html = await fetchHtml(pageUrl);
-      const $ = cheerio.load(html);
-      const items = parseDealsList($, regionKey);
-      dealsPageCache.set(pageKey, { ts: Date.now(), data: items });
-      return items;
-    });
-    all = pageItems.flat();
-  } else {
-    all = parseDealsList($first, regionKey);
-  }
-
-  const seen = new Set();
-  const uniq = [];
-  for (const it of all) {
-    const key = (it.url || "") + "|" + it.title;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    uniq.push(it);
-  }
-
-  return applyOverridesToItems(uniq, regionKey);
+  const maxItems = Math.min(pages, DEALS_MAX_DISPLAY_PAGES) * DEALS_DISPLAY_PAGE_SIZE;
+  // Новый UUID возвращает basePrice (оригинал) + discountedPrice (скидка) + discountText
+  const raw = await fetchAllGqlItems(PS_CATS.SALES, regionKey, maxItems, null, false);
+  // Если discountText не дал процент — пробуем из истории цен; если и там нет — ставим isSale
+  const items = raw.map(it => {
+    const histDisc = (it.discountPercent == null && it.npTitleId)
+      ? getDiscountPercent(it.npTitleId, regionKey, it.basePrice)
+      : null;
+    return {
+      ...it,
+      discountPercent: it.discountPercent ?? histDisc,
+      isSale: (it.discountPercent == null && histDisc == null) ? true : undefined,
+    };
+  });
+  return applyOverridesToItems(items, regionKey);
 }
 
 // Возвращает кешированные данные мгновенно, а в фоне запускает обновление
 // кеша, чтобы следующий запрос уже получил свежие данные.
 async function getDealsWithStaleCache(regionKey, pages) {
-  const key = `${regionKey}:${pages}:filtered-deals-v6`;
+  const key = `${regionKey}:${pages}:filtered-deals-v8`;
   const cached = cache.get(key);
   const now = Date.now();
 
@@ -1723,7 +1734,7 @@ async function warmDealsCache() {
     try {
       const full = await getDealsFull(region, DEALS_MAX_DISPLAY_PAGES);
       if (full.length > 0) {
-        const key = `${region}:${DEALS_MAX_DISPLAY_PAGES}:filtered-deals-v6`;
+        const key = `${region}:${DEALS_MAX_DISPLAY_PAGES}:filtered-deals-v8`;
         cache.set(key, { ts: Date.now(), data: full });
         console.log(`[warm] deals/${region}: ${full.length} items`);
       }
@@ -1733,10 +1744,25 @@ async function warmDealsCache() {
   }
 }
 
+// Фоновое построение базы цен для вычисления скидок (однократно при старте)
+async function warmPriceHistory() {
+  await loadHistory();
+  for (const region of ["ua", "tr"]) {
+    try {
+      // Скачиваем топ-200 PS5 игр — они же и записываются в историю через recordBasePrices=true
+      await fetchAllGqlItems(PS_CATS.PS5, region, 200, null, true);
+      await saveHistory();
+      console.log(`[prices] baseline/${region} updated`);
+    } catch (e) {
+      console.warn(`[prices] baseline/${region} failed:`, e.message);
+    }
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`Deals proxy running: http://localhost:${PORT}`);
-  // Прогреваем сразу при старте (не блокируем ответ сервера)
-  warmDealsCache();
+  // Загружаем историю цен, затем прогреваем кэш скидок
+  warmPriceHistory().then(() => warmDealsCache());
   // Обновляем за 2 минуты до истечения TTL (каждые 18 мин)
   setInterval(warmDealsCache, CACHE_TTL_MS - 2 * 60 * 1000);
 });
