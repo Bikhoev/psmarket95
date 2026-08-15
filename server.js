@@ -468,7 +468,7 @@ function gqlProductToItem(product, regionKey) {
     discountPercent,
     basePrice: effectiveBase,
     rubPrice,
-    isPreOrder: false,
+    isPreOrder: Array.isArray(product.skus) && product.skus.some(s => s.type === "PREORDER"),
     isFree,
     region: regionKey,
   };
@@ -640,17 +640,19 @@ async function getDealsFull(regionKey, pages = 10) {
   const maxItems = Math.min(pages, DEALS_MAX_DISPLAY_PAGES) * DEALS_DISPLAY_PAGE_SIZE;
   // Новый UUID возвращает basePrice (оригинал) + discountedPrice (скидка) + discountText
   const raw = await fetchAllGqlItems(PS_CATS.SALES, regionKey, maxItems, null, false);
-  // Если discountText не дал процент — пробуем из истории цен; если и там нет — ставим isSale
-  const items = raw.map(it => {
-    const histDisc = (it.discountPercent == null && it.npTitleId)
-      ? getDiscountPercent(it.npTitleId, regionKey, it.basePrice)
-      : null;
-    return {
-      ...it,
-      discountPercent: it.discountPercent ?? histDisc,
-      isSale: (it.discountPercent == null && histDisc == null) ? true : undefined,
-    };
-  });
+  // Если discountText не дал процент — пробуем из истории цен
+  // Игры без реального процента скидки отфильтровываем полностью
+  const items = raw
+    .map(it => {
+      const histDisc = (it.discountPercent == null && it.npTitleId)
+        ? getDiscountPercent(it.npTitleId, regionKey, it.basePrice)
+        : null;
+      return {
+        ...it,
+        discountPercent: it.discountPercent ?? histDisc,
+      };
+    })
+    .filter(it => it.discountPercent != null && it.discountPercent > 0);
   return applyOverridesToItems(items, regionKey);
 }
 

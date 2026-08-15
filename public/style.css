@@ -1004,11 +1004,6 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: 0 8px 18px var(--accent-ring);
 }
 
-.deal-badge--sale {
-  background: linear-gradient(135deg, #f97316, #ef4444);
-  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.35);
-  letter-spacing: 0.04em;
-}
 
 .deal-body {
   display: flex;
