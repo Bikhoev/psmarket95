@@ -954,105 +954,94 @@ app.delete("/api/admin/overrides/:gameId", async (req, res) => {
 });
 
 // Каталоги PS Plus / EA: порядок как на странице категории в PS Store (без искусственного reverse).
+// ===== КАТАЛОГ ПОДПИСОК ЧЕРЕЗ GRAPHQL =====
+// Заменяет старый HTML-скрапер getCategoryCatalogCached
+async function getSubsCatalogGql(categoryId, regionKey, maxItems = 500) {
+  const cacheKey = `subs-gql:${regionKey}:${categoryId}`;
+  const cached = psplusCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < PSPLUS_TTL_MS) return cached;
+
+  const locale = GQL_LOCALE[regionKey];
+  const baseUrl = `https://store.playstation.com/${regionKey === "ua" ? "ru-ua" : "en-tr"}/category/${categoryId}`;
+
+  // fetchAllGqlItems может отфильтровать бесплатные позиции — используем прямой вызов
+  const PAGE_SIZE = 100;
+  const items = [];
+  let offset = 0;
+  let totalCount = null;
+
+  while (items.length < maxItems) {
+    const size = Math.min(PAGE_SIZE, maxItems - items.length);
+    const cat = await gqlCategoryPage(categoryId, locale, size, offset, null);
+    if (!cat) break;
+    if (totalCount === null) totalCount = cat.pageInfo?.totalCount ?? 0;
+    const products = cat.products || [];
+    if (products.length === 0) break;
+
+    for (const p of products) {
+      if (!p.name) continue;
+      const img = pickBestImage(p.media);
+      const storeLocale = regionKey === "ua" ? "en-ua" : "en-tr";
+      items.push({
+        title: p.name,
+        img,
+        url: `https://store.playstation.com/${storeLocale}/product/${p.id}`,
+      });
+    }
+
+    offset += products.length;
+    if (offset >= (totalCount || 0)) break;
+  }
+
+  const seen = new Set();
+  const uniq = items.filter(it => {
+    if (seen.has(it.url)) return false;
+    seen.add(it.url);
+    return true;
+  });
+
+  const result = { baseUrl, full: uniq, cached: false, ts: Date.now() };
+  if (uniq.length > 0) psplusCache.set(cacheKey, result);
+  return result;
+}
+
 function sortCatalogItems(items, _sortKey) {
   void _sortKey;
   return [...items];
 }
 
+function makeCatalogApiHandler(categoryId) {
+  return async (req, res) => {
+    const region = (req.query.region || "ua").toString();
+    const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "24", 10) || 24, 1), 60);
+
+    if (!["ua", "tr"].includes(region))
+      return res.status(400).json({ error: "region must be ua|tr" });
+
+    try {
+      const { baseUrl, full, ts } = await getSubsCatalogGql(categoryId, region);
+      const isCached = Boolean(ts && Date.now() - ts < PSPLUS_TTL_MS - 1000);
+      const slice = full.slice(offset, offset + limit);
+      res.json({ region, baseUrl, cached: isCached, total: full.length, offset, limit, items: slice });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  };
+}
+
 // ===== PS PLUS CATALOG API =====
-// /api/psplus-catalog?region=ua&pages=3&offset=0&limit=24&sort=popular|new
-app.get("/api/psplus-catalog", async (req, res) => {
-  const region = (req.query.region || "ua").toString();
-  const pages = Math.min(parseInt(req.query.pages || "5", 10) || 5, 10);
-  const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
-  const limit = Math.min(
-    Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
-    60
-  );
-  const sort = (req.query.sort || "popular").toString();
+// /api/psplus-catalog?region=ua&offset=0&limit=24
+app.get("/api/psplus-catalog", makeCatalogApiHandler("3a7006fe-e26f-49fe-87e5-4473d7ed0fb2"));
 
-  if (!["ua", "tr"].includes(region))
-    return res.status(400).json({ error: "region must be ua|tr" });
+// /api/psplus-classics?region=ua&offset=0&limit=24
+app.get("/api/psplus-classics", makeCatalogApiHandler("8056ad23-7f30-485c-a628-b99f9d5aec5d"));
 
-  // PS Plus Game Catalog (Extra/Deluxe)
-  const CATEGORY_ID = "3a7006fe-e26f-49fe-87e5-4473d7ed0fb2";
-
-  try {
-    const { baseUrl, full, cached } = await getCategoryCatalogCached({
-      region,
-      pages,
-      categoryId: CATEGORY_ID,
-      ttlMs: PSPLUS_TTL_MS,
-    });
-
-    const sorted = sortCatalogItems(full, sort);
-    const slice = sorted.slice(offset, offset + limit);
-    res.json({
-      region,
-      pages,
-      baseUrl,
-      cached,
-      total: sorted.length,
-      offset,
-      limit,
-      items: slice,
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// /api/psplus-classics?region=ua&pages=5&offset=0&limit=24&sort=popular|new
-app.get("/api/psplus-classics", async (req, res) => {
-  const region = (req.query.region || "ua").toString();
-  const pages = Math.min(parseInt(req.query.pages || "5", 10) || 5, 10);
-  const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
-  const limit = Math.min(
-    Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
-    60
-  );
-  const sort = (req.query.sort || "popular").toString();
-
-  if (!["ua", "tr"].includes(region))
-    return res.status(400).json({ error: "region must be ua|tr" });
-
-  const CATEGORY_ID = "8056ad23-7f30-485c-a628-b99f9d5aec5d";
-
-  try {
-    const { baseUrl, full, cached } = await getCategoryCatalogCached({
-      region,
-      pages,
-      categoryId: CATEGORY_ID,
-      ttlMs: PSPLUS_TTL_MS,
-    });
-
-    const sorted = sortCatalogItems(full, sort);
-    const slice = sorted.slice(offset, offset + limit);
-    res.json({
-      region,
-      pages,
-      baseUrl,
-      cached,
-      total: sorted.length,
-      offset,
-      limit,
-      items: slice,
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// /api/eaplay-catalog?region=ua&pages=5&offset=0&limit=24&sort=popular|new
+// /api/eaplay-catalog?region=ua&offset=0&limit=24
 app.get("/api/eaplay-catalog", async (req, res) => {
   const region = (req.query.region || "ua").toString();
-  const pages = Math.min(parseInt(req.query.pages || "5", 10) || 5, 10);
   const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
-  const limit = Math.min(
-    Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
-    60
-  );
-  const sort = (req.query.sort || "popular").toString();
+  const limit = Math.min(Math.max(parseInt(req.query.limit || "24", 10) || 24, 1), 60);
 
   if (!["ua", "tr"].includes(region))
     return res.status(400).json({ error: "region must be ua|tr" });
@@ -1060,118 +1049,21 @@ app.get("/api/eaplay-catalog", async (req, res) => {
   const CATEGORY_ID = "74d4e266-5c64-4c61-a7e3-1b6e78f643e6";
 
   try {
-    const { baseUrl, full, cached } = await getCategoryCatalogCached({
-      region,
-      pages,
-      categoryId: CATEGORY_ID,
-      ttlMs: PSPLUS_TTL_MS,
-    });
-
-    const sorted = sortCatalogItems(full, sort);
-    const slice = sorted.slice(offset, offset + limit);
-    res.json({
-      region,
-      pages,
-      baseUrl,
-      cached,
-      total: sorted.length,
-      offset,
-      limit,
-      items: slice,
-    });
+    const { baseUrl, full, ts } = await getSubsCatalogGql(CATEGORY_ID, region);
+    const isCached = Boolean(ts && Date.now() - ts < PSPLUS_TTL_MS - 1000);
+    const slice = full.slice(offset, offset + limit);
+    res.json({ region, baseUrl, cached: isCached, total: full.length, offset, limit, items: slice });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ===== UBISOFT+ CLASSICS (PS Store category) =====
-app.get("/api/psplus-ubisoft", async (req, res) => {
-  const region = (req.query.region || "ua").toString();
-  const pages = Math.min(parseInt(req.query.pages || "5", 10) || 5, 10);
-  const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
-  const limit = Math.min(
-    Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
-    60
-  );
-  const sort = (req.query.sort || "popular").toString();
+// ===== UBISOFT+ CLASSICS =====
+app.get("/api/psplus-ubisoft", makeCatalogApiHandler("db65f8d8-e606-49af-9a9a-23a05f55bd9a"));
 
-  if (!["ua", "tr"].includes(region))
-    return res.status(400).json({ error: "region must be ua|tr" });
-
-  // Ubisoft+ Classics (same category id across locales)
-  const CATEGORY_ID = "db65f8d8-e606-49af-9a9a-23a05f55bd9a";
-
-  try {
-    const { baseUrl, full, cached } = await getCategoryCatalogCached({
-      region,
-      pages,
-      categoryId: CATEGORY_ID,
-      ttlMs: PSPLUS_TTL_MS,
-    });
-
-    const sorted = sortCatalogItems(full, sort);
-    const slice = sorted.slice(offset, offset + limit);
-    res.json({
-      region,
-      pages,
-      sort,
-      baseUrl,
-      cached,
-      total: sorted.length,
-      offset,
-      limit,
-      items: slice,
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-async function handlePsPlusMonthly(req, res) {
-  const region = (req.query.region || "ua").toString();
-  const pages = Math.min(parseInt(req.query.pages || "3", 10) || 3, 10);
-  const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
-  const limit = Math.min(
-    Math.max(parseInt(req.query.limit || "24", 10) || 24, 1),
-    60
-  );
-  const sort = (req.query.sort || "popular").toString();
-
-  if (!["ua", "tr"].includes(region))
-    return res.status(400).json({ error: "region must be ua|tr" });
-
-  // PS Plus Monthly Games (same category id across locales)
-  const CATEGORY_ID = "4c73be1e-f2f4-4aa4-b1dc-8a6d776e19fa";
-
-  try {
-    const { baseUrl, full, cached } = await getCategoryCatalogCached({
-      region,
-      pages,
-      categoryId: CATEGORY_ID,
-      ttlMs: PSPLUS_TTL_MS,
-    });
-
-    const sorted = sortCatalogItems(full, sort);
-    const slice = sorted.slice(offset, offset + limit);
-    res.json({
-      region,
-      pages,
-      sort,
-      baseUrl,
-      cached,
-      total: sorted.length,
-      offset,
-      limit,
-      items: slice,
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-}
-
-// backward compatible name (used previously for Essential)
-app.get("/api/psplus-essential", handlePsPlusMonthly);
-app.get("/api/psplus-monthly", handlePsPlusMonthly);
+// ===== PS PLUS MONTHLY (Игры месяца) =====
+app.get("/api/psplus-essential", makeCatalogApiHandler("4c73be1e-f2f4-4aa4-b1dc-8a6d776e19fa"));
+app.get("/api/psplus-monthly",   makeCatalogApiHandler("4c73be1e-f2f4-4aa4-b1dc-8a6d776e19fa"));
 
 // ===== DETAILS CACHE =====
 const detailsCache = new Map(); // url -> { ts, data }
