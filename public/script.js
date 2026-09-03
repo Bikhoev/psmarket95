@@ -26,13 +26,13 @@ function niceRubPrice(rub) {
 function getRate(regionKey, basePrice) {
   const isTR = regionKey === "tr"; // true = TRY, false = UAH
 
-  if (basePrice >= 2000) return isTR ? 2.65 : 2.7;
-  if (basePrice >= 1500) return isTR ? 2.8 : 2.9;
-  if (basePrice >= 1000) return isTR ? 2.95 : 3.05;
-  if (basePrice >= 500) return isTR ? 3.2 : 3.25;
-  if (basePrice >= 250) return isTR ? 3.65 : 3.7;
-  if (basePrice >= 100) return isTR ? 4.9 : 5.0;
-  return isTR ? 6.4 : 6.5; // до 100
+  if (basePrice >= 2000) return isTR ? 2.47 : 2.78;
+  if (basePrice >= 1500) return isTR ? 2.94 : 3.05;
+  if (basePrice >= 1000) return isTR ? 3.1 : 3.2;
+  if (basePrice >= 500) return isTR ? 3.36 : 3.41;
+  if (basePrice >= 250) return isTR ? 3.83 : 3.89;
+  if (basePrice >= 100) return isTR ? 5.15 : 5.25;
+  return isTR ? 6.72 : 6.83; // до 100
 }
 
 function escapeHtml(s) {
@@ -907,7 +907,7 @@ ${lines.join("\n\n")}${discountNote}
           ? `<img class="psplus-cover" src="${ampInHtmlAttr(img)}" alt="${titleAttr}" loading="lazy" />`
           : `<div class="psplus-cover psplus-cover--placeholder" aria-label="${titleAttr}"><span class="psplus-cover-placeholder-text">PS</span></div>`;
         return `<article class="psplus-card">
-  ${coverHtml}
+  <div class="psplus-media">${coverHtml}</div>
   <div class="psplus-title" title="${titleAttr}">${titleHtml}</div>
 </article>`;
       })

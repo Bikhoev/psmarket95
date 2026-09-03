@@ -109,15 +109,17 @@ async function mapWithConcurrency(list, concurrency, fn) {
 // ===== ТВОИ ПРАВИЛА =====
 const MIN_GAME_PRICE_RUB = 390;
 
+const RATE_VERSION = "r105";
+
 function getRate(regionKey, basePrice) {
   const isTR = regionKey === "tr";
-  if (basePrice >= 2000) return isTR ? 2.35 : 2.65;
-  if (basePrice >= 1500) return isTR ? 2.8 : 2.9;
-  if (basePrice >= 1000) return isTR ? 2.95 : 3.05;
-  if (basePrice >= 500) return isTR ? 3.2 : 3.25;
-  if (basePrice >= 250) return isTR ? 3.65 : 3.7;
-  if (basePrice >= 100) return isTR ? 4.9 : 5.0;
-  return isTR ? 6.4 : 6.5;
+  if (basePrice >= 2000) return isTR ? 2.47 : 2.78;
+  if (basePrice >= 1500) return isTR ? 2.94 : 3.05;
+  if (basePrice >= 1000) return isTR ? 3.1 : 3.2;
+  if (basePrice >= 500) return isTR ? 3.36 : 3.41;
+  if (basePrice >= 250) return isTR ? 3.83 : 3.89;
+  if (basePrice >= 100) return isTR ? 5.15 : 5.25;
+  return isTR ? 6.72 : 6.83;
 }
 
 // ✅ ОДИН РАЗ на весь файл: округление "вверх до сотни минус 10" => xx90
@@ -607,7 +609,7 @@ function parseDealsList($, regionKey) {
 // ===== GraphQL-based getters (заменяют HTML-скрапинг) =====
 
 async function getTopGamesFull(regionKey) {
-  const key = `top:${regionKey}`;
+  const key = `top:${regionKey}:${RATE_VERSION}`;
   const cached = topGamesCache.get(key);
   if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) {
     return applyOverridesToItems(cached.data, regionKey);
@@ -619,7 +621,7 @@ async function getTopGamesFull(regionKey) {
 }
 
 async function getNewReleasesFull(regionKey) {
-  const key = `latest:${regionKey}`;
+  const key = `latest:${regionKey}:${RATE_VERSION}`;
   const cached = newReleasesCache.get(key);
   if (cached && Date.now() - cached.ts < STORE_PAGE_TTL_MS) {
     return applyOverridesToItems(cached.data, regionKey);
@@ -659,7 +661,7 @@ async function getDealsFull(regionKey, pages = 10) {
 // Возвращает кешированные данные мгновенно, а в фоне запускает обновление
 // кеша, чтобы следующий запрос уже получил свежие данные.
 async function getDealsWithStaleCache(regionKey, pages) {
-  const key = `${regionKey}:${pages}:filtered-deals-v8`;
+  const key = `${regionKey}:${pages}:filtered-deals-${RATE_VERSION}`;
   const cached = cache.get(key);
   const now = Date.now();
 
@@ -1628,7 +1630,7 @@ async function warmDealsCache() {
     try {
       const full = await getDealsFull(region, DEALS_MAX_DISPLAY_PAGES);
       if (full.length > 0) {
-        const key = `${region}:${DEALS_MAX_DISPLAY_PAGES}:filtered-deals-v8`;
+        const key = `${region}:${DEALS_MAX_DISPLAY_PAGES}:filtered-deals-${RATE_VERSION}`;
         cache.set(key, { ts: Date.now(), data: full });
         console.log(`[warm] deals/${region}: ${full.length} items`);
       }
