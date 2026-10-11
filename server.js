@@ -109,17 +109,17 @@ async function mapWithConcurrency(list, concurrency, fn) {
 // ===== ТВОИ ПРАВИЛА =====
 const MIN_GAME_PRICE_RUB = 390;
 
-const RATE_VERSION = "r105";
+const RATE_VERSION = "r085";
 
 function getRate(regionKey, basePrice) {
   const isTR = regionKey === "tr";
-  if (basePrice >= 2000) return isTR ? 2.47 : 2.78;
-  if (basePrice >= 1500) return isTR ? 2.94 : 3.05;
-  if (basePrice >= 1000) return isTR ? 3.1 : 3.2;
-  if (basePrice >= 500) return isTR ? 3.36 : 3.41;
-  if (basePrice >= 250) return isTR ? 3.83 : 3.89;
-  if (basePrice >= 100) return isTR ? 5.15 : 5.25;
-  return isTR ? 6.72 : 6.83;
+  if (basePrice >= 2000) return isTR ? 2.1 : 2.36;
+  if (basePrice >= 1500) return isTR ? 2.5 : 2.59;
+  if (basePrice >= 1000) return isTR ? 2.64 : 2.72;
+  if (basePrice >= 500) return isTR ? 2.86 : 2.9;
+  if (basePrice >= 250) return isTR ? 3.26 : 3.31;
+  if (basePrice >= 100) return isTR ? 4.38 : 4.46;
+  return isTR ? 5.71 : 5.81;
 }
 
 // ✅ ОДИН РАЗ на весь файл: округление "вверх до сотни минус 10" => xx90
